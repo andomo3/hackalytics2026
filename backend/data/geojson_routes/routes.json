@@ -1,0 +1,20 @@
+[
+  {
+    "id": "route_stadium_to_king_street",
+    "label": "Lumen Field to King Street Station",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5962, -122.3295],
+      [47.5984, -122.3290]
+    ]
+  },
+  {
+    "id": "route_stadium_to_sodo",
+    "label": "Lumen Field to SODO Station",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5915, -122.3325],
+      [47.5813, -122.3278]
+    ]
+  }
+]
