@@ -1,14 +1,14 @@
 # SafeTransit
 
-Predictive crowd-safety platform for the Seattle 2026 World Cup stress-test scenarios.
+SafeTransit is a full-stack hackathon project for predictive crowd safety at Seattle Lumen Field.
 
-## Stack
+## Project Layout
 
-- Backend: FastAPI + SQLAlchemy (async) + SQLite
-- Frontend: React + Vite + Tailwind + Leaflet
-- Infra: Docker Compose
+- `backend/`: FastAPI + SQLAlchemy + SQLite
+- `frontend/`: React + Vite + TypeScript (Figma-derived UI)
+- `docker-compose.yml`: local full-stack orchestration
 
-## Quick Start (Docker)
+## Run With Docker
 
 ```powershell
 docker compose up --build
@@ -16,40 +16,27 @@ docker compose up --build
 
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
-- Health check: `http://localhost:8000/healthz`
 
-## Local Development
+## Run Locally
 
 ### Backend
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-cd backend
 pip install -r requirements.txt
+cd backend
 uvicorn main:app --reload --port 8000
 ```
 
 ### Frontend
 
 ```powershell
-cd ..
 cd frontend
 npm install
 npm run dev
 ```
 
-## Environment Variables
+## Environment
 
 Use `.env.example` as the template for `.env`.
-
-- `OPENAI_API_KEY`
-- `SOCRATA_APP_TOKEN`
-- `NFL_DATA_DIR`
-- `DATABASE_URL`
-- `BACKEND_CORS_ORIGINS`
-
-## Data Safety
-
-- Do not commit raw NFL CSVs larger than GitHub limits.
-- Keep all inference precomputed into SQLite for zero-latency demo playback.

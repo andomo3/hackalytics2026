@@ -61,3 +61,10 @@ backend/data/nfl_csvs/*.csv
 .idea/
 .DS_Store
 Thumbs.db
+
+# Legacy root-level Figma export artifacts (migrated into frontend/)
+/src/
+/.npmrc
+/index.html
+/package.json
+/vite.config.ts
