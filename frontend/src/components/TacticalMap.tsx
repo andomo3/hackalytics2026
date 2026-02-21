@@ -166,10 +166,10 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="border border-cyan-400 bg-slate-950 bg-opacity-90 p-1.5 backdrop-blur-sm">
-          <div className="text-cyan-400 text-[8px] mb-0.5">TACTICAL</div>
-          <div className="text-white font-bold text-[9px]">LUMEN FIELD</div>
-          <div className="text-emerald-400 text-[7px] mt-0.5">
+        <div className="border border-cyan-400 bg-slate-950 bg-opacity-90 p-2 backdrop-blur-sm">
+          <div className="text-cyan-400 text-xs mb-0.5">TACTICAL</div>
+          <div className="text-white font-bold text-sm">LUMEN FIELD</div>
+          <div className="text-emerald-400 text-xs mt-0.5">
             {safeRoutes.length > 0 && <span className="mr-1">✓{safeRoutes.length}</span>}
             {dangerRoutes.length > 0 && <span className="text-red-500">⚠{dangerRoutes.length}</span>}
             {hotspots.length > 0 && <span className="ml-1">🎯{hotspots.length}</span>}
@@ -228,7 +228,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
             
             {/* Density Label */}
             <div
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-mono font-bold text-black text-xs pointer-events-none"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-mono font-bold text-black text-sm pointer-events-none"
               style={{ textShadow: '0 0 4px rgba(255,255,255,0.5)' }}
             >
               {hotspot.density_pct}%
@@ -293,7 +293,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
             {/* Popup on hover */}
             <div className="absolute left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               <div className="border-2 border-cyan-400 bg-slate-950 bg-opacity-95 p-2 backdrop-blur-md whitespace-nowrap">
-                <div className="font-mono text-xs">
+                <div className="font-mono text-sm">
                   <div className="font-bold text-cyan-400 mb-1">ALERT</div>
                   <div className={
                     isWarning ? 'text-red-500' :
@@ -341,7 +341,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
       />
       
       {/* Map Labels */}
-      <div className="absolute bottom-2 left-2 z-[500] font-mono text-[7px] text-cyan-400 opacity-50 pointer-events-none">
+      <div className="absolute bottom-2 left-2 z-[500] font-mono text-xs text-cyan-400 opacity-50 pointer-events-none">
         <div>47.5952°N</div>
         <div>122.3316°W</div>
       </div>
