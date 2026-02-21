@@ -55,6 +55,7 @@ backend/data/nfl/*.csv
 backend/data/nfl_csvs/*.csv
 *.joblib
 *.pkl
+Kaggle Archive/
 
 # IDE / OS files
 .vscode/
