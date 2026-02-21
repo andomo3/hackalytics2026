@@ -22,6 +22,7 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
       {scenarios.map((scenario, index) => {
         const isSelected = selectedScenario === index;
         const riskColor = getRiskColor(scenario.risk_level);
+        const scenarioLabel = scenario.name.split(':').pop()?.trim() ?? scenario.name;
         
         return (
           <motion.button
@@ -71,8 +72,14 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
               <div className="font-mono text-xs mb-1 opacity-70">
                 {String.fromCharCode(65 + index)}
               </div>
-              <div className="font-mono font-bold text-sm mb-1.5 leading-tight">
-                {scenario.name.split(' ')[0]}
+              <div className="font-mono font-bold text-xs mb-1 leading-tight text-left">
+                {scenarioLabel}
+              </div>
+              <div className="font-mono text-xs text-slate-500 leading-tight text-left mb-1">
+                {scenario.teams ?? scenario.description}
+              </div>
+              <div className="font-mono text-xs text-slate-500 text-left mb-1">
+                {scenario.date ?? '--'} | {scenario.attendance.toLocaleString()}
               </div>
               <div className={`font-mono text-xs font-bold ${
                 isSelected ? '' : 'text-slate-500'
