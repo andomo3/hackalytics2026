@@ -54,10 +54,9 @@ export default function App() {
           // Landing Page
           <motion.div
             key="landing"
-            initial={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 1 }}
             exit={{ 
               opacity: 0,
-              scale: 3,
               transition: { duration: 1.2, ease: [0.43, 0.13, 0.23, 0.96] }
             }}
             className="fixed inset-0 z-20"
@@ -68,10 +67,9 @@ export default function App() {
           // Command Center
           <motion.div
             key="command-center"
-            initial={{ opacity: 0, scale: 0.3 }}
+            initial={{ opacity: 0 }}
             animate={{ 
               opacity: 1,
-              scale: 1,
               transition: { duration: 1.2, ease: [0.43, 0.13, 0.23, 0.96], delay: 0.2 }
             }}
             className="relative z-10"
@@ -96,7 +94,7 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 1.5 }}
             >
-              ← EXIT
+              {'<- EXIT'}
             </motion.button>
 
             {/* ESC Hint */}
@@ -151,7 +149,7 @@ export default function App() {
           >
             @hckmstrrahul
           </a>
-          {' '}• Sep 2025
+          {' '} - Sep 2025
         </p>
       </div>
     </div>

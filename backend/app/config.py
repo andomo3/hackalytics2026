@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import field_validator
+import json
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,14 +16,23 @@ class Settings(BaseSettings):
     socrata_app_token: str | None = None
     nfl_data_dir: str = "./backend/data/nfl_csvs"
     database_url: str = "sqlite+aiosqlite:///./safetransit.db"
-    backend_cors_origins: list[str] = ["http://localhost:5173"]
+    backend_cors_origins: str = "http://localhost:5173"
 
-    @field_validator("backend_cors_origins", mode="before")
-    @classmethod
-    def parse_origins(cls, value: str | list[str]) -> list[str]:
-        if isinstance(value, list):
-            return value
-        return [item.strip() for item in value.split(",") if item.strip()]
+    @property
+    def cors_origins(self) -> list[str]:
+        raw_value = self.backend_cors_origins.strip()
+        if not raw_value:
+            return ["http://localhost:5173"]
+
+        if raw_value.startswith("["):
+            try:
+                decoded = json.loads(raw_value)
+                if isinstance(decoded, list):
+                    return [str(origin).strip() for origin in decoded if str(origin).strip()]
+            except json.JSONDecodeError:
+                pass
+
+        return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
 
 settings = Settings()

@@ -1,14 +1,40 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { GameState } from './mockData';
 
+type AlertHistoryEntry = {
+  minute: number;
+  timeLabel: string;
+  message: string;
+  severity: number;
+};
+
 interface AlertPanelProps {
   gameState: GameState;
   alertMessage: string;
   threatScore: number;
   timeLabel: string;
+  severity?: number;
+  crowdVolume?: number;
+  alertHistory?: AlertHistoryEntry[];
 }
 
-export function AlertPanel({ gameState, alertMessage, threatScore, timeLabel }: AlertPanelProps) {
+function severityLabel(severity: number): string {
+  if (severity >= 5) return 'SEV-5';
+  if (severity >= 4) return 'SEV-4';
+  if (severity >= 3) return 'SEV-3';
+  if (severity >= 2) return 'SEV-2';
+  return 'SEV-1';
+}
+
+export function AlertPanel({
+  gameState,
+  alertMessage,
+  threatScore,
+  timeLabel,
+  severity,
+  crowdVolume,
+  alertHistory = [],
+}: AlertPanelProps) {
   const getThreatLevel = () => {
     if (threatScore >= 0.8) return { label: 'CRITICAL', color: 'text-red-500', bg: 'bg-red-500' };
     if (threatScore >= 0.6) return { label: 'HIGH', color: 'text-amber-400', bg: 'bg-amber-400' };
@@ -17,6 +43,7 @@ export function AlertPanel({ gameState, alertMessage, threatScore, timeLabel }: 
   };
 
   const threat = getThreatLevel();
+  const resolvedSeverity = severity ?? (threatScore >= 0.8 ? 5 : threatScore >= 0.6 ? 4 : threatScore >= 0.4 ? 3 : threatScore >= 0.2 ? 2 : 1);
 
   return (
     <motion.div
@@ -85,17 +112,26 @@ export function AlertPanel({ gameState, alertMessage, threatScore, timeLabel }: 
           <div className="text-xs text-cyan-400 border-b border-slate-700 pb-0.5">
             THREAT
           </div>
-          <div className="flex items-center gap-1.5">
-            <motion.div
-              className={`w-3 h-3 rounded-full ${threat.bg}`}
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-            <div className={`font-bold text-sm ${threat.color}`}>
-              {threat.label}
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <motion.div
+                className={`w-3 h-3 rounded-full ${threat.bg}`}
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              <div className={`font-bold text-sm ${threat.color}`}>
+                {threat.label}
+              </div>
+            </div>
+            <div className={`text-xs font-bold ${threat.color}`}>
+              {severityLabel(resolvedSeverity)}
             </div>
           </div>
-          
+
+          <div className="text-xs text-slate-400">
+            Crowd est: <span className="text-white">{(crowdVolume ?? 0).toLocaleString()}</span>
+          </div>
+
           {/* Threat meter */}
           <div className="w-full h-1 bg-slate-800 overflow-hidden">
             <motion.div
@@ -128,6 +164,22 @@ export function AlertPanel({ gameState, alertMessage, threatScore, timeLabel }: 
               </div>
             </motion.div>
           </AnimatePresence>
+
+          {alertHistory.length > 0 && (
+            <div className="pt-1 border-t border-slate-700 space-y-1">
+              {alertHistory.map((entry) => (
+                <div key={`${entry.minute}-${entry.message}`} className="text-xs leading-tight">
+                  <span className="text-slate-500">{entry.timeLabel}</span>{' '}
+                  <span className={entry.severity >= 4 ? 'text-red-500' : 'text-amber-400'}>
+                    [{severityLabel(entry.severity)}]
+                  </span>{' '}
+                  <span className="text-slate-400">
+                    {entry.message.length > 48 ? `${entry.message.substring(0, 48)}...` : entry.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

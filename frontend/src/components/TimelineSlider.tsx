@@ -4,9 +4,40 @@ interface TimelineSliderProps {
   currentMinute: number;
   onMinuteChange: (minute: number) => void;
   threatScore: number;
+  threatSeries?: number[];
 }
 
-export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: TimelineSliderProps) {
+function gradientColorForThreat(score: number): string {
+  if (score >= 0.8) return 'rgba(239, 68, 68, 0.45)';
+  if (score >= 0.6) return 'rgba(251, 191, 36, 0.45)';
+  if (score >= 0.4) return 'rgba(250, 204, 21, 0.45)';
+  return 'rgba(71, 85, 105, 0.35)';
+}
+
+function buildThreatTrackGradient(threatSeries: number[] | undefined): string {
+  if (!threatSeries || threatSeries.length === 0) {
+    return 'rgba(71, 85, 105, 0.3)';
+  }
+
+  const bucketSize = 15;
+  const segments: string[] = [];
+  for (let start = 0; start < 1440; start += bucketSize) {
+    const end = Math.min(1439, start + bucketSize - 1);
+    const bucket = threatSeries.slice(start, end + 1);
+    const averageThreat =
+      bucket.length > 0
+        ? bucket.reduce((sum, value) => sum + value, 0) / bucket.length
+        : 0;
+    const color = gradientColorForThreat(averageThreat);
+    const left = (start / 1439) * 100;
+    const right = ((end + 1) / 1439) * 100;
+    segments.push(`${color} ${left}% ${right}%`);
+  }
+
+  return `linear-gradient(to right, ${segments.join(', ')})`;
+}
+
+export function TimelineSlider({ currentMinute, onMinuteChange, threatScore, threatSeries }: TimelineSliderProps) {
   const formatTime = (minute: number) => {
     const hour = Math.floor(minute / 60);
     const min = minute % 60;
@@ -99,11 +130,7 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
             onChange={(e) => onMinuteChange(parseInt(e.target.value))}
             className="w-full h-2 appearance-none cursor-pointer slider-timeline"
             style={{
-              background: `linear-gradient(to right, 
-                rgba(16, 185, 129, 0.3) 0%, 
-                rgba(16, 185, 129, 0.3) ${(currentMinute / 1439) * 100}%, 
-                rgba(71, 85, 105, 0.3) ${(currentMinute / 1439) * 100}%, 
-                rgba(71, 85, 105, 0.3) 100%)`
+              background: buildThreatTrackGradient(threatSeries)
             }}
           />
         </div>
