@@ -56,6 +56,7 @@ backend/data/nfl_csvs/*.csv
 NFL Play by Play 2009-2018 (v5).csv
 *.joblib
 *.pkl
+Kaggle Archive/
 
 # IDE / OS files
 .vscode/
