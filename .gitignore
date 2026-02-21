@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm/
+.pnpm-store/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Databases and local cache
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+backend/data/cache/
+
+# Local datasets and ML artifacts
+backend/data/nfl/*.csv
+backend/data/nfl_csvs/*.csv
+*.joblib
+*.pkl
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

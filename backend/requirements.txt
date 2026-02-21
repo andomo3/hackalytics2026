@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+pandas
+numpy
+xgboost
+scikit-learn
+joblib
+pydantic-ai[openai]
+sqlalchemy[asyncio]
+aiosqlite
+sodapy
+httpx
+python-dotenv
