@@ -1,8 +1,24 @@
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect } from 'react';
 import { SafeTransitCommand } from './components/SafeTransitCommand';
 import { HUDFrame } from './components/HUDFrame';
+import { LandingPage } from './components/LandingPage';
 
 export default function App() {
+  const [showCommandCenter, setShowCommandCenter] = useState(false);
+
+  // ESC key listener to go back to landing page
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCommandCenter) {
+        setShowCommandCenter(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCommandCenter]);
+
   return (
     <div 
       className="min-h-screen w-full relative overflow-hidden"
@@ -19,37 +35,98 @@ export default function App() {
         }}
       />
 
-      {/* Screen glow effect */}
+      {/* Subtle screen glow effect - reduced */}
       <motion.div 
         className="fixed inset-0 pointer-events-none z-40"
         style={{
-          background: 'radial-gradient(circle at center, rgba(0, 255, 255, 0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(circle at center, rgba(0, 255, 255, 0.05) 0%, transparent 60%)',
           filter: 'blur(40px)'
         }}
         animate={{ 
-          opacity: [0.3, 0.5, 0.3]
+          opacity: [0.2, 0.3, 0.2]
         }}
         transition={{ duration: 4, repeat: Infinity }}
       />
 
-      {/* Vignette effect */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-40"
-        style={{
-          background: 'radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.7) 100%)',
-          boxShadow: 'inset 0 0 200px rgba(0, 0, 0, 0.9)'
-        }}
-      />
+      {/* Page Content with Transitions */}
+      <AnimatePresence mode="wait">
+        {!showCommandCenter ? (
+          // Landing Page
+          <motion.div
+            key="landing"
+            initial={{ opacity: 1, scale: 1 }}
+            exit={{ 
+              opacity: 0,
+              scale: 3,
+              transition: { duration: 1.2, ease: [0.43, 0.13, 0.23, 0.96] }
+            }}
+            className="fixed inset-0 z-20"
+          >
+            <LandingPage onEnter={() => setShowCommandCenter(true)} />
+          </motion.div>
+        ) : (
+          // Command Center
+          <motion.div
+            key="command-center"
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={{ 
+              opacity: 1,
+              scale: 1,
+              transition: { duration: 1.2, ease: [0.43, 0.13, 0.23, 0.96], delay: 0.2 }
+            }}
+            className="relative z-10"
+          >
+            {/* Exit Button */}
+            <motion.button
+              onClick={() => setShowCommandCenter(false)}
+              className="fixed top-8 left-8 z-50 px-4 py-2 font-mono text-sm border-2 rounded-lg transition-all"
+              style={{
+                borderColor: 'rgba(239, 68, 68, 0.5)',
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                color: '#ef4444',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+              }}
+              whileHover={{
+                borderColor: 'rgba(239, 68, 68, 1)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
+              }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.5 }}
+            >
+              ← EXIT
+            </motion.button>
 
-      {/* Main SafeTransit Interface */}
-      <div className="relative z-10 w-full h-screen px-24 pt-20 pb-16">
-        <div className="w-full h-full">
-          <SafeTransitCommand />
-        </div>
-      </div>
+            {/* ESC Hint */}
+            <motion.div
+              className="fixed top-8 left-32 z-50 px-3 py-1 font-mono text-xs rounded"
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                color: 'rgba(156, 163, 175, 0.6)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.8 }}
+            >
+              Press ESC
+            </motion.div>
 
-      {/* HUD Frame with corner brackets and status */}
-      <HUDFrame />
+            {/* Main SafeTransit Interface */}
+            <div className="w-full h-screen flex items-center justify-center px-24 pt-20 pb-16">
+              <div className="w-full h-full max-w-[1920px]">
+                <SafeTransitCommand />
+              </div>
+            </div>
+
+            {/* HUD Frame with corner brackets and status */}
+            <HUDFrame />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sticky Footer */}
       <div 

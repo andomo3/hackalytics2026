@@ -68,13 +68,13 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
             )}
             
             <div className="relative z-10">
-              <div className="font-mono text-[7px] mb-0.5 opacity-70">
+              <div className="font-mono text-xs mb-1 opacity-70">
                 {String.fromCharCode(65 + index)}
               </div>
-              <div className="font-mono font-bold text-[9px] mb-1 leading-tight">
+              <div className="font-mono font-bold text-sm mb-1.5 leading-tight">
                 {scenario.name.split(' ')[0]}
               </div>
-              <div className={`font-mono text-[7px] font-bold ${
+              <div className={`font-mono text-xs font-bold ${
                 isSelected ? '' : 'text-slate-500'
               }`}>
                 {scenario.risk_level}

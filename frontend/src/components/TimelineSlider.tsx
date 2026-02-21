@@ -51,8 +51,8 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
       <div className="relative z-10">
         {/* Header */}
         <div className="flex justify-between items-center mb-3">
-          <div className="font-mono text-cyan-400 text-xs flex items-center gap-4">
-            <span className="text-white">TIMELINE SCRUBBER</span>
+          <div className="font-mono text-cyan-400 text-sm flex items-center gap-4">
+            <span className="text-white font-bold">TIMELINE SCRUBBER</span>
             <span className="opacity-70">|</span>
             <span>
               TIME: <span className="text-emerald-400 font-bold">{formatTime(currentMinute)}</span>
@@ -83,7 +83,7 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
         {/* Slider */}
         <div className="relative">
           {/* Time markers */}
-          <div className="flex justify-between text-xs font-mono text-cyan-400 mb-2 opacity-60">
+          <div className="flex justify-between text-sm font-mono text-cyan-400 mb-2 opacity-60">
             <span>00:00</span>
             <span>06:00</span>
             <span>12:00</span>
@@ -106,18 +106,6 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
                 rgba(71, 85, 105, 0.3) 100%)`
             }}
           />
-          
-          {/* Game time indicator (18:00 - 21:00) */}
-          <div 
-            className="absolute top-8 h-1 bg-cyan-400 bg-opacity-20 pointer-events-none"
-            style={{
-              left: '75%',
-              width: '12.5%'
-            }}
-          />
-          <div className="absolute top-10 left-[75%] text-xs font-mono text-cyan-400 opacity-50">
-            GAME TIME
-          </div>
         </div>
       </div>
       

@@ -40,67 +40,18 @@ export function SafeTransitCommand() {
   
   return (
     <div className="w-full h-full bg-slate-950 relative overflow-hidden">
-      {/* CRT Effect - Full screen background */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'radial-gradient(circle at center, rgba(0, 40, 40, 0.2), rgba(0, 0, 0, 0.8))',
-        }}
-      />
-      
-      {/* Vignette Effect */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-[1001]"
-        style={{
-          boxShadow: 'inset 0 0 100px 50px rgba(0, 0, 0, 0.8)',
-        }}
-      />
-      
       {/* Main Content */}
       <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <motion.div
-          className="border-b-2 border-cyan-400 bg-slate-950 bg-opacity-80 backdrop-blur-md px-3 py-2"
-          initial={{ y: -100 }}
-          animate={{ y: 0 }}
-          transition={{ type: 'spring', stiffness: 100 }}
+          className="border-b-2 border-cyan-400 bg-slate-950 px-3 py-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
         >
-          <div className="flex items-center justify-between">
-            <div className="font-mono">
-              <h1 className="text-sm font-bold text-cyan-400 tracking-wider">
-                SAFETRANSIT
-              </h1>
-              <p className="text-[8px] text-emerald-400">
-                AI CROWD PREVENTION // 2026 WC
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Play/Pause Button */}
-              <motion.button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`px-2 py-1 border font-mono text-[8px] ${
-                  isPlaying
-                    ? 'border-red-500 text-red-500 bg-red-500 bg-opacity-10'
-                    : 'border-emerald-400 text-emerald-400 bg-emerald-400 bg-opacity-10'
-                }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {isPlaying ? '⏸' : '▶'}
-              </motion.button>
-              
-              {/* System Status */}
-              <div className="flex items-center gap-1 font-mono text-[8px]">
-                <motion.div
-                  className="w-2 h-2 rounded-full bg-emerald-400"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                <span className="text-emerald-400">ONLINE</span>
-              </div>
-            </div>
-          </div>
+          <h1 className="font-mono text-lg font-bold text-cyan-400 tracking-wider">
+            SAFETRANSIT
+          </h1>
         </motion.div>
         
         {/* Scenario Selector */}
@@ -175,12 +126,6 @@ export function SafeTransitCommand() {
           />
         </motion.div>
       </div>
-      
-      {/* Corner decorations - retro terminal style */}
-      <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
       
       {/* Hotspot Modal */}
       {selectedHotspot && (
