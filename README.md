@@ -1,12 +1,19 @@
 # SafeTransit
 
-SafeTransit is a full-stack hackathon project for predictive crowd safety at Seattle Lumen Field.
+Repository documentation and exported datasets have been organized into dedicated directories.
 
-## Project Layout
+## Directory Highlights
 
+- `docs/`: all project documentation
+- `exports/`: data exports and analysis artifacts
 - `backend/`: FastAPI + SQLAlchemy + SQLite
-- `frontend/`: React + Vite + TypeScript (Figma-derived UI)
-- `docker-compose.yml`: local full-stack orchestration
+- `frontend/`: React + Vite + TypeScript
+
+## Start Here
+
+- Documentation index: `docs/README.md`
+- Main plan: `docs/project/execcution_plan.md`
+- Frontend overview: `docs/frontend/PROJECT_OVERVIEW.md`
 
 ## Run With Docker
 
@@ -36,7 +43,3 @@ cd frontend
 npm install
 npm run dev
 ```
-
-## Environment
-
-Use `.env.example` as the template for `.env`.
