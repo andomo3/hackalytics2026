@@ -85,123 +85,76 @@ function DotGrid() {
   );
 }
 
-/* ───── horizontal timeline card ───── */
-function TimelineCard({
-  label,
-  tag,
-  title,
-  description,
-  items,
-  index,
-}: {
-  label: string;
-  tag?: string;
-  title: string;
-  description?: string;
-  items?: string[];
-  index: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-40px' });
+/* ───── animated counter ───── */
+function AnimCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const val = useRef(0);
 
+  useEffect(() => {
+    if (!isInView || !ref.current) return;
+    const dur = 1800;
+    const start = performance.now();
+    function tick(now: number) {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      val.current = Math.round(ease * target);
+      if (ref.current) ref.current.textContent = val.current.toLocaleString() + suffix;
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }, [isInView, target, suffix]);
+
+  return <span ref={ref}>0{suffix}</span>;
+}
+
+/* ───── bento cell wrapper ───── */
+function BentoCell({
+  children,
+  className = '',
+  style = {},
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <motion.div
-      ref={ref}
-      className="flex flex-col flex-shrink-0"
+    <div
+      className={`relative font-mono overflow-hidden ${className}`}
       style={{
-        width: '340px',
-        opacity: isInView ? 1 : 0,
-        transform: isInView ? 'translateY(0)' : 'translateY(20px)',
-        transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.08}s`,
+        background: 'rgba(2, 6, 23, 0.7)',
+        border: '1px solid rgba(34, 211, 238, 0.08)',
+        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+        ...style,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.2)';
+        e.currentTarget.style.boxShadow = '0 0 30px rgba(34, 211, 238, 0.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.08)';
+        e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      {/* Top: label + tag */}
-      <div className="flex items-center gap-3 mb-4">
-        <span
-          className="font-mono text-xs tracking-widest"
-          style={{ color: '#64748b' }}
-        >
-          {label}
+      {children}
+    </div>
+  );
+}
+
+/* ───── status row ───── */
+function StatusRow({ label, status, value }: { label: string; status: 'ONLINE' | 'ACTIVE' | 'STANDBY'; value: string }) {
+  const color = status === 'ONLINE' ? '#22d3ee' : status === 'ACTIVE' ? '#10b981' : '#f59e0b';
+  return (
+    <div className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.06)' }}>
+      <span className="text-xs" style={{ color: '#94a3b8' }}>{label}</span>
+      <div className="flex items-center gap-3">
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+          <span style={{ color }}>{status}</span>
         </span>
-        {tag && (
-          <span
-            className="font-mono text-xs px-2 py-0.5"
-            style={{
-              color: '#22d3ee',
-              border: '1px solid rgba(34, 211, 238, 0.25)',
-              background: 'rgba(34, 211, 238, 0.06)',
-            }}
-          >
-            {tag}
-          </span>
-        )}
+        <span className="text-xs" style={{ color: '#64748b' }}>{value}</span>
       </div>
-
-      {/* Dot + line connector (above card) */}
-      <div className="flex items-center mb-5">
-        <div
-          className="rounded-full flex-shrink-0"
-          style={{
-            width: '9px',
-            height: '9px',
-            background: '#22d3ee',
-            boxShadow: '0 0 10px rgba(34, 211, 238, 0.6)',
-          }}
-        />
-        <div
-          className="flex-1 h-px"
-          style={{ background: 'rgba(34, 211, 238, 0.15)' }}
-        />
-      </div>
-
-      {/* Card body */}
-      <div
-        className="flex-1 flex flex-col"
-        style={{
-          background: 'rgba(2, 6, 23, 0.6)',
-          border: '1px solid rgba(34, 211, 238, 0.08)',
-          padding: '24px',
-          transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.2)';
-          e.currentTarget.style.boxShadow = '0 0 30px rgba(34, 211, 238, 0.05)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.08)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
-      >
-        <h3
-          className="font-mono text-sm font-bold tracking-wider mb-4"
-          style={{ color: '#e2e8f0' }}
-        >
-          {title}
-        </h3>
-        {description && (
-          <p
-            className="font-mono text-xs leading-relaxed"
-            style={{ color: '#94a3b8' }}
-          >
-            {description}
-          </p>
-        )}
-        {items && (
-          <ul className="flex flex-col gap-2.5">
-            {items.map((item) => (
-              <li
-                key={item}
-                className="font-mono text-xs flex items-start gap-2"
-                style={{ color: '#64748b' }}
-              >
-                <span style={{ color: '#22d3ee', marginTop: '2px' }}>{'>'}</span>
-                <span className="leading-relaxed">{item}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -212,56 +165,6 @@ export function LandingPage({ onEnter }: LandingPageProps) {
   const scrollToAbout = () => {
     aboutRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  const timelineEntries = [
-    {
-      label: 'THE PROBLEM',
-      tag: 'WHY',
-      title: 'MASS EGRESS IS UNPREDICTABLE',
-      description:
-        'When 72,000 fans exit a World Cup match simultaneously, crowd density surges create life-threatening conditions at key intersections. Traditional crowd management relies on static plans that cannot adapt in real-time.',
-    },
-    {
-      label: 'OUR APPROACH',
-      tag: 'HOW',
-      title: 'AI-POWERED PREDICTION + ROUTING',
-      items: [
-        'XGBoost models trained on Seattle traffic data predict crowd density 30 min ahead',
-        'Pydantic AI agents generate real-time rerouting recommendations',
-        '40+ intersection sensors with heat-based busyness scoring',
-        'Zoom-adaptive marker clustering for multi-scale awareness',
-      ],
-    },
-    {
-      label: 'SCENARIOS',
-      tag: 'SIMULATE',
-      title: 'THREE STRESS-TEST MODES',
-      items: [
-        'Normal Game -- Standard 68K attendance egress pattern',
-        'High Attendance -- Sold-out 72K+ with elevated crowd pressure',
-        'Q3 Blowout -- Early mass exit creating surge conditions',
-      ],
-    },
-    {
-      label: 'TECH STACK',
-      tag: 'BUILD',
-      title: 'FULL-STACK ARCHITECTURE',
-      items: [
-        'React 18 + Vite + TypeScript frontend',
-        'Leaflet.js dark tactical map with real Seattle geography',
-        'Framer Motion for fluid transitions',
-        'FastAPI + SQLite backend with XGBoost models',
-        'Pydantic AI routing agent for autonomous rerouting',
-      ],
-    },
-    {
-      label: 'HACKLYTICS',
-      tag: '2026',
-      title: 'BEST AI FOR HUMAN SAFETY',
-      description:
-        'Built for the Hacklytics 2026 hackathon at Georgia Tech. CrowdShield demonstrates how predictive AI and real-time spatial intelligence can transform crowd safety for the largest sporting events on earth.',
-    },
-  ];
 
   return (
     <div
@@ -352,83 +255,174 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         </motion.button>
       </div>
 
-      {/* ===== ABOUT -- HORIZONTAL SCROLLABLE TIMELINE ===== */}
-      <div
-        ref={aboutRef}
-        className="relative z-10 w-full"
-      >
-        {/* Section header */}
-        <div className="flex flex-col items-center pt-24 pb-12">
-          <motion.div
-            className="font-mono text-xs tracking-widest mb-6"
-            style={{ color: '#475569' }}
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-          >
-            ABOUT THE PROJECT
-          </motion.div>
-          <div
-            style={{
-              width: '40px',
-              height: '1px',
-              background: 'rgba(34, 211, 238, 0.3)',
-            }}
-          />
-        </div>
-
-        {/* Horizontal scroll container */}
-        <div
-          className="relative overflow-x-auto pb-20"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(34, 211, 238, 0.2) transparent',
-          }}
-        >
-          {/* Horizontal line running behind all cards */}
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              top: '68px',
-              left: '0',
-              right: '0',
-              height: '1px',
-              background:
-                'linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.12) 10%, rgba(34, 211, 238, 0.12) 90%, transparent 100%)',
-            }}
-          />
-
-          <div
-            className="flex gap-8 px-12"
-            style={{
-              paddingRight: '80px',
-              width: 'max-content',
-            }}
-          >
-            {timelineEntries.map((entry, i) => (
-              <TimelineCard
-                key={entry.label}
-                label={entry.label}
-                tag={entry.tag}
-                title={entry.title}
-                description={entry.description}
-                items={entry.items}
-                index={i}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Scroll hint */}
+      {/* ===== ABOUT -- BRUTALIST BENTO GRID ===== */}
+      <div ref={aboutRef} className="relative z-10 w-full">
+        {/* Section comment header */}
         <motion.div
-          className="flex justify-center pb-16 font-mono text-xs tracking-widest"
+          className="font-mono text-xs tracking-widest px-8 pt-16 pb-2 flex items-center gap-4"
           style={{ color: '#334155' }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
-          {'DRAG OR SCROLL HORIZONTALLY -->'}
+          <span>{'// SECTION: RAW_DATA'}</span>
+          <div className="flex-1 h-px" style={{ background: 'rgba(34, 211, 238, 0.06)' }} />
         </motion.div>
+
+        <div
+          className="font-mono text-7xl font-bold px-8 pb-10"
+          style={{ color: 'rgba(34, 211, 238, 0.04)' }}
+        >
+          002
+        </div>
+
+        {/* Bento grid */}
+        <div
+          className="grid gap-px mx-auto px-6 pb-24"
+          style={{
+            maxWidth: '1200px',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            background: 'rgba(34, 211, 238, 0.03)',
+          }}
+        >
+          {/* ---- Metrics row (4 cells spanning 3 cols each) ---- */}
+          {[
+            { label: 'Avg Latency', value: 4.2, suffix: 'ms', color: '#22d3ee' },
+            { label: 'Intersections', value: 40, suffix: '+', color: '#10b981' },
+            { label: 'Scenarios', value: 3, suffix: '', color: '#f59e0b' },
+            { label: 'Max Capacity', value: 72000, suffix: '', color: '#22d3ee' },
+          ].map((m) => (
+            <BentoCell
+              key={m.label}
+              className="p-6"
+              style={{ gridColumn: 'span 3' }}
+            >
+              <div className="text-xs tracking-widest mb-3" style={{ color: '#475569' }}>
+                {m.label}
+              </div>
+              <div className="text-3xl font-bold" style={{ color: m.color }}>
+                <AnimCounter target={m.value} suffix={m.suffix} />
+              </div>
+            </BentoCell>
+          ))}
+
+          {/* ---- Terminal cell (8 cols) ---- */}
+          <BentoCell
+            className="p-0"
+            style={{ gridColumn: 'span 8' }}
+          >
+            {/* Terminal header bar */}
+            <div
+              className="flex items-center justify-between px-4 py-2"
+              style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.08)' }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold" style={{ color: '#22d3ee' }}>crowdshield.sys</span>
+                <span className="text-xs" style={{ color: '#334155' }}>_</span>
+              </div>
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ef4444' }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }} />
+              </div>
+            </div>
+            {/* Terminal body */}
+            <div className="p-5 text-xs leading-relaxed" style={{ color: '#64748b' }}>
+              <div style={{ color: '#475569' }}>{'>'} initializing crowdshield v1.0.0...</div>
+              <div style={{ color: '#475569' }}>{'>'} loading seattle traffic data (2018-2024)...</div>
+              <div style={{ color: '#10b981' }}>{'>'} xgboost model loaded -- 94.2% accuracy</div>
+              <div style={{ color: '#10b981' }}>{'>'} pydantic ai routing agent online</div>
+              <div style={{ color: '#22d3ee' }}>{'>'} 40 intersection sensors calibrated</div>
+              <div style={{ color: '#22d3ee' }}>{'>'} leaflet tactical map initialized</div>
+              <div style={{ color: '#10b981' }}>{'>'} all systems nominal. ready for simulation.</div>
+              <div className="mt-3 flex items-center gap-1">
+                <span style={{ color: '#22d3ee' }}>$</span>
+                <motion.span
+                  style={{ color: '#94a3b8' }}
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity, repeatType: 'reverse' }}
+                >
+                  _
+                </motion.span>
+              </div>
+            </div>
+          </BentoCell>
+
+          {/* ---- Status table (4 cols) ---- */}
+          <BentoCell
+            className="p-5"
+            style={{ gridColumn: 'span 4' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold tracking-wider" style={{ color: '#22d3ee' }}>scenario.status</span>
+            </div>
+            <StatusRow label="Normal Game" status="ONLINE" value="68K" />
+            <StatusRow label="High Attendance" status="ACTIVE" value="72K+" />
+            <StatusRow label="Q3 Blowout" status="STANDBY" value="72K+" />
+            <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(34, 211, 238, 0.06)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs" style={{ color: '#475569' }}>Threat Coverage</span>
+                <span className="text-xs font-bold" style={{ color: '#22d3ee' }}>96%</span>
+              </div>
+              <div className="w-full h-1" style={{ background: 'rgba(34, 211, 238, 0.1)' }}>
+                <motion.div
+                  className="h-full"
+                  style={{ background: '#22d3ee' }}
+                  initial={{ width: '0%' }}
+                  whileInView={{ width: '96%' }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.5, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+          </BentoCell>
+
+          {/* ---- Description cell (7 cols) ---- */}
+          <BentoCell
+            className="p-6"
+            style={{ gridColumn: 'span 7' }}
+          >
+            <div className="text-xs tracking-widest mb-4" style={{ color: '#334155' }}>MANIFEST.md</div>
+            <h3 className="text-lg font-bold tracking-wide mb-4" style={{ color: '#e2e8f0' }}>
+              Infrastructure built for{' '}
+              <span style={{ color: '#22d3ee' }}>crowd intelligence</span>
+            </h3>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: '#64748b' }}>
+              When 72,000 fans exit a World Cup match simultaneously, crowd density surges create
+              life-threatening conditions at key intersections. CrowdShield uses XGBoost predictions
+              and Pydantic AI routing agents to model mass egress events and generate real-time
+              rerouting recommendations -- transforming static crowd plans into adaptive intelligence.
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: '#475569' }}>
+              Built for the Hacklytics 2026 hackathon at Georgia Tech. Best AI for Human Safety track.
+            </p>
+          </BentoCell>
+
+          {/* ---- Tech stack cell (5 cols) ---- */}
+          <BentoCell
+            className="p-5"
+            style={{ gridColumn: 'span 5' }}
+          >
+            <div className="text-xs font-bold tracking-wider mb-4" style={{ color: '#22d3ee' }}>tech.stack</div>
+            {[
+              { name: 'React 18 + Vite', desc: 'Frontend runtime' },
+              { name: 'Leaflet.js', desc: 'Dark tactical map' },
+              { name: 'Framer Motion', desc: 'Fluid transitions' },
+              { name: 'XGBoost', desc: 'Crowd density prediction' },
+              { name: 'Pydantic AI', desc: 'Routing agent' },
+              { name: 'FastAPI + SQLite', desc: 'Backend API' },
+            ].map((t) => (
+              <div
+                key={t.name}
+                className="flex items-center justify-between py-1.5"
+                style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.04)' }}
+              >
+                <span className="text-xs" style={{ color: '#94a3b8' }}>{t.name}</span>
+                <span className="text-xs" style={{ color: '#334155' }}>{t.desc}</span>
+              </div>
+            ))}
+          </BentoCell>
+        </div>
 
         {/* Bottom separator */}
         <div className="flex justify-center pb-16">
@@ -436,8 +430,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             style={{
               width: '80px',
               height: '1px',
-              background:
-                'linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent)',
             }}
           />
         </div>
