@@ -188,6 +188,7 @@ export function CrowdShieldCommand({ onExit }: { onExit?: () => void }) {
                 safeRoutes={currentData.safe_routes}
                 blurbs={currentData.blurbs}
                 hotspots={currentData.hotspots}
+                intersections={currentData.intersections ?? []}
                 onHotspotClick={setSelectedHotspot}
               />
             </motion.div>
