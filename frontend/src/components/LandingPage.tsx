@@ -152,7 +152,7 @@ function FeatureCard({
 }) {
   return (
     <motion.div
-      className="group relative flex flex-col gap-4 p-6"
+      className="group relative flex flex-col gap-5 p-7"
       style={{
         background: 'rgba(2, 6, 23, 0.6)',
         border: '1px solid rgba(34, 211, 238, 0.12)',
@@ -285,7 +285,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
 
         {/* Subtitle with typing effect */}
         <motion.div
-          className="mt-6 font-mono text-center"
+          className="mt-10 font-mono text-center"
           style={{ maxWidth: '600px' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -304,7 +304,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
 
         {/* Stats row */}
         <motion.div
-          className="flex items-center gap-8 mt-10 font-mono"
+          className="flex items-center gap-12 mt-14 font-mono"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.0 }}
@@ -321,7 +321,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               >
                 <AnimatedNumber target={stat.value} suffix={stat.suffix} />
               </div>
-              <div className="text-xs mt-1" style={{ color: '#475569', letterSpacing: '0.1em' }}>
+              <div className="text-xs mt-2" style={{ color: '#475569', letterSpacing: '0.1em' }}>
                 {stat.label}
               </div>
             </div>
@@ -331,7 +331,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         {/* CTA Button */}
         <motion.button
           onClick={onEnter}
-          className="group mt-12 font-mono text-sm font-bold tracking-wider flex items-center gap-3 transition-all"
+          className="group mt-16 font-mono text-sm font-bold tracking-wider flex items-center gap-3 transition-all"
           style={{
             padding: '14px 32px',
             color: '#020617',
@@ -353,13 +353,12 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       </div>
 
       {/* ===== FEATURES GRID ===== */}
-      <div className="relative z-10 px-6 pb-16">
+      <div className="relative z-10 px-6 pt-8 pb-20">
         <div
-          className="mx-auto grid grid-cols-1 gap-px"
+          className="mx-auto grid gap-4"
           style={{
-            maxWidth: '900px',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            background: 'rgba(34, 211, 238, 0.08)',
+            maxWidth: '960px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           }}
         >
           {features.map((feature, i) => (
@@ -375,7 +374,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           width: '120px',
           height: '1px',
           background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent)',
-          marginBottom: '24px',
+          marginBottom: '32px',
         }}
       />
     </div>
