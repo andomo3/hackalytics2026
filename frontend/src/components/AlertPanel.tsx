@@ -159,7 +159,7 @@ export function AlertPanel({
             >
               <div className="text-xs leading-tight">
                 <span className={`${threat.color} font-bold`}>
-                  {alertMessage.length > 80 ? alertMessage.substring(0, 80) + '...' : alertMessage}
+                  {alertMessage.length > 160 ? alertMessage.substring(0, 160) + '...' : alertMessage}
                 </span>
               </div>
             </motion.div>
@@ -174,7 +174,7 @@ export function AlertPanel({
                     [{severityLabel(entry.severity)}]
                   </span>{' '}
                   <span className="text-slate-400">
-                    {entry.message.length > 48 ? `${entry.message.substring(0, 48)}...` : entry.message}
+                    {entry.message.length > 100 ? `${entry.message.substring(0, 100)}...` : entry.message}
                   </span>
                 </div>
               ))}

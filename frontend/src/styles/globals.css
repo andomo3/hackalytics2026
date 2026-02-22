@@ -187,3 +187,115 @@
 html {
   font-size: var(--font-size);
 }
+
+/* ===== Leaflet Map Overrides ===== */
+
+/* Hide default Leaflet attribution for cleaner look */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Hide default zoom controls */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+/* Ensure map tiles are crisp */
+.leaflet-tile {
+  filter: brightness(0.85) contrast(1.1) saturate(0.7);
+}
+
+/* ===== Route Animations ===== */
+
+/* Marching ants animation for danger routes */
+@keyframes marchingAnts {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.danger-route {
+  animation: marchingAnts 1s linear infinite;
+}
+
+/* Glow effect for safe routes */
+.safe-route {
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6)) drop-shadow(0 0 8px rgba(16, 185, 129, 0.3));
+}
+
+/* ===== Hotspot Pulse Animations ===== */
+
+@keyframes hotspotPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--pulse-color), 0 0 16px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--pulse-color), 0 0 32px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes hotspotRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.hotspot-marker {
+  animation: hotspotPulse 2s ease-in-out infinite;
+}
+
+.hotspot-ring {
+  animation: hotspotRing 1.5s ease-out infinite;
+}
+
+/* ===== Scanning Line ===== */
+
+@keyframes scanLine {
+  0% {
+    top: -100px;
+  }
+  100% {
+    top: calc(100% + 100px);
+  }
+}
+
+.map-scan-line {
+  animation: scanLine 4s linear infinite;
+}
+
+/* ===== Stadium Marker ===== */
+
+@keyframes stadiumGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.6), 0 0 20px rgba(0, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4);
+  }
+}
+
+@keyframes stadiumRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
+}
+
+.stadium-marker {
+  animation: stadiumGlow 2.5s ease-in-out infinite;
+}
+
+.stadium-ring {
+  animation: stadiumRing 3s ease-out infinite;
+}

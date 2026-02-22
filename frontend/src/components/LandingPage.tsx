@@ -20,7 +20,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          SAFETRANSIT
+          CROWDSHIELD
         </motion.h1>
 
         {/* Subtitle */}
