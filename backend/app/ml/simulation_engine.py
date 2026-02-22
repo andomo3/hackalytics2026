@@ -16,12 +16,16 @@ CRITICAL_CAPACITY_THRESHOLD = 133
 
 @dataclass(frozen=True)
 class SimulationConfig:
+    """Runtime controls for Monte Carlo simulation complexity and reproducibility."""
+
     num_simulations: int = 10_000
     random_seed: int = 42
     critical_capacity_threshold: int = CRITICAL_CAPACITY_THRESHOLD
 
 
 def _as_game_value(game_state: dict[str, Any] | None, *keys: str, default: float = 0.0) -> float:
+    """Safely read numeric game-state values while tolerating missing/dirty payloads."""
+
     if not game_state:
         return default
     for key in keys:
@@ -43,6 +47,12 @@ def simulate_surge_velocity(
     - ``egress_threat_score`` (or ``threat_score``)
     - ``estimated_crowd_volume``
     - ``game_state`` with score + quarter
+
+    Core logic:
+    1. Build a deterministic baseline from threat score + estimated crowd.
+    2. Apply a blowout momentum multiplier when home is down 21+ in Q3/Q4.
+    3. Add stochastic variance across N simulations.
+    4. Extract minute-level 95th percentile for worst-case safety planning.
     """
 
     cfg = config or SimulationConfig()
@@ -113,4 +123,3 @@ def simulate_surge_velocity(
 
     p95 = np.percentile(samples, 95, axis=1)
     return np.rint(p95).astype(np.int32)
-

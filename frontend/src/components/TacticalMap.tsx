@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Hotspot, Intersection, TransitStatus } from './mockData';
+import type { Hotspot, Intersection, TransitStatus } from './types';
+
+/**
+ * CrowdShield tactical map renderer.
+ *
+ * Architecture:
+ * - Canvas paints the Seattle basemap and tactical lines for fast timeline scrubbing.
+ * - Absolute HTML overlays render station state and interactive hotspot elements.
+ * - A fixed stadium-district bounding box maps lat/lng into local pixel coordinates.
+ */
 
 // ============================================================
 //  BOUNDING BOX – Seattle Stadium District
@@ -33,6 +42,7 @@ const TRANSIT_HUBS: Array<{
 
 interface Dims { w: number; h: number }
 
+/** Convert geographic coordinates into local canvas pixel space. */
 function mapLatLngToPixels(lat: number, lng: number, dims: Dims): { x: number; y: number } {
   const x = ((lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)) * dims.w;
   // Invert Y: higher latitude = higher on screen = lower y
@@ -136,19 +146,20 @@ function IntersectionTooltip({ intersection, dims }: { intersection: Intersectio
 // ============================================================
 
 export function TacticalMap({
-  dangerRoutes,
-  safeRoutes,
+  dangerRoutes = [],
+  safeRoutes = [],
   emergencyCorridors = [],
   transitStatus,
-  blurbs,
-  hotspots,
-  intersections,
+  blurbs = [],
+  hotspots = [],
+  intersections = [],
   onHotspotClick,
 }: TacticalMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dims, setDims] = useState<Dims>({ w: 800, h: 600 });
   const [hoveredIntersection, setHoveredIntersection] = useState<Intersection | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const animFrameRef = useRef(0);
   const emsPulseRef = useRef(0);
 
@@ -156,16 +167,37 @@ export function TacticalMap({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setDims({ w: Math.round(width), h: Math.round(height) });
-        }
+
+    const updateDims = (width: number, height: number) => {
+      if (width > 0 && height > 0) {
+        setDims({ w: Math.round(width), h: Math.round(height) });
       }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
+    };
+
+    updateDims(el.clientWidth, el.clientHeight);
+
+    let ro: ResizeObserver | null = null;
+    const onWindowResize = () => updateDims(el.clientWidth, el.clientHeight);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          updateDims(width, height);
+        }
+      });
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    return () => {
+      if (ro) {
+        ro.disconnect();
+      } else {
+        window.removeEventListener('resize', onWindowResize);
+      }
+    };
   }, []);
 
   // ---- EMS pulse animation loop ----
@@ -265,6 +297,7 @@ export function TacticalMap({
   ];
 
   // ---- Canvas drawing ----
+  // Renders Seattle vector basemap first, then tactical routes, then event markers.
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -272,16 +305,18 @@ export function TacticalMap({
     if (!ctx) return;
 
     const { w, h } = dims;
-    canvas.width = w * devicePixelRatio;
-    canvas.height = h * devicePixelRatio;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
+    try {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(w * dpr));
+      canvas.height = Math.max(1, Math.floor(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // --- Background (dark land) ---
-    ctx.fillStyle = '#0a0f1a';
-    ctx.fillRect(0, 0, w, h);
+      // --- Background (dark land) ---
+      ctx.fillStyle = '#0a0f1a';
+      ctx.fillRect(0, 0, w, h);
 
-    // Helper to convert lat/lng to pixels
-    const toPixels = (pt: number[] | [number, number]) => mapLatLngToPixels(pt[0], pt[1], dims);
+      // Helper to convert lat/lng to pixels
+      const toPixels = (pt: number[] | [number, number]) => mapLatLngToPixels(pt[0], pt[1], dims);
 
     // ===============================================
     //  BASEMAP LAYER 1: Elliott Bay water
@@ -517,6 +552,9 @@ export function TacticalMap({
 
     // --- Intersection heat dots (painted on canvas for perf) ---
     intersections.forEach((int) => {
+      if (!int || !Number.isFinite(int.lat) || !Number.isFinite(int.lng) || !Number.isFinite(int.heat)) {
+        return;
+      }
       const pos = toPixels([int.lat, int.lng]);
       const color = getHeatColor(int.heat);
       const glow = getHeatGlow(int.heat);
@@ -605,6 +643,11 @@ export function TacticalMap({
       ctx.globalAlpha = 1;
     });
 
+      setMapError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Canvas render failed';
+      setMapError(message);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dims, safeRoutes, dangerRoutes, emergencyCorridors, intersections, blurbs]);
 
@@ -632,6 +675,7 @@ export function TacticalMap({
       let closestDist = 20; // threshold in pixels
 
       intersections.forEach((int) => {
+        if (!int || !Number.isFinite(int.lat) || !Number.isFinite(int.lng)) return;
         const pos = mapLatLngToPixels(int.lat, int.lng, dims);
         const dist = Math.hypot(pos.x - mx, pos.y - my);
         if (dist < closestDist) {
@@ -690,6 +734,14 @@ export function TacticalMap({
         onMouseMove={handleCanvasMouseMove}
         onMouseLeave={handleCanvasMouseLeave}
       />
+
+      {mapError && (
+        <div className="absolute bottom-3 right-3 z-50 pointer-events-none">
+          <div className="font-mono text-[11px] text-red-400 border border-red-500 bg-black/70 px-2 py-1">
+            MAP RENDER ERROR: {mapError}
+          </div>
+        </div>
+      )}
 
       {/* ===== Foreground HTML Overlay ===== */}
       <div className="absolute inset-0 z-20 pointer-events-none">
@@ -947,3 +999,5 @@ export function TacticalMap({
     </div>
   );
 }
+
+
