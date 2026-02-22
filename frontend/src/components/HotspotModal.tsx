@@ -47,7 +47,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
         
         {/* Modal Content */}
         <motion.div
-          className="relative z-10 w-[600px] max-w-[90vw] bg-slate-950 bg-opacity-95 border-4 border-cyan-400 p-8 backdrop-blur-xl"
+          className="relative z-10 w-[600px] max-w-[90vw] bg-slate-800 bg-opacity-95 border-4 border-cyan-400 p-8 backdrop-blur-xl"
           initial={{ scale: 0.8, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.8, y: 50 }}
@@ -85,9 +85,9 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
               </div>
             </div>
           </div>
-          
+
           {/* Scanline Effect */}
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none opacity-20"
             style={{
               background: `repeating-linear-gradient(
@@ -121,7 +121,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
             </div>
             
             {/* Visual Capacity Bar */}
-            <div className="mt-4 h-8 bg-slate-900 border-2 border-slate-700 relative overflow-hidden">
+            <div className="mt-4 h-8 bg-slate-700 border-2 border-slate-600 relative overflow-hidden">
               <motion.div
                 className={`h-full ${getDensityColor(hotspot.density_pct)}`}
                 initial={{ width: 0 }}
@@ -157,7 +157,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
           {hotspot.forecasted_density && (
             <div className="mb-6 relative z-10">
               <div className="text-slate-400 text-xs mb-2">FORECASTED (+30 MIN)</div>
-              <div className="flex items-center gap-4 border-2 border-slate-800 bg-slate-900 bg-opacity-50 p-4">
+              <div className="flex items-center gap-4 border-2 border-slate-600 bg-slate-700 bg-opacity-50 p-4">
                 <div className="text-3xl font-bold text-amber-400">
                   {hotspot.forecasted_density}%
                 </div>
@@ -223,7 +223,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
           )}
           
           {/* Footer Info */}
-          <div className="mt-6 pt-4 border-t-2 border-slate-800 text-xs text-slate-500 relative z-10">
+          <div className="mt-6 pt-4 border-t-2 border-slate-600 text-xs text-slate-400 relative z-10">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-slate-600">COORDINATES</div>
@@ -237,7 +237,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
               </div>
             </div>
           </div>
-          
+
           {/* Blinking Cursor */}
           <motion.div
             className="absolute bottom-4 right-4 text-cyan-400 text-xl"

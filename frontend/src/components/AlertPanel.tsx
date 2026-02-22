@@ -47,9 +47,9 @@ export function AlertPanel({
 
   return (
     <motion.div
-      className="border border-slate-800 p-2 h-full overflow-y-auto relative"
+      className="border border-slate-600 p-2 h-full overflow-y-auto relative"
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+        backgroundColor: 'rgba(51, 65, 85, 0.85)',
         backdropFilter: 'blur(20px)'
       }}
       initial={{ x: 100, opacity: 0 }}
@@ -57,7 +57,7 @@ export function AlertPanel({
       transition={{ duration: 0.3 }}
     >
       {/* Scanlines */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `repeating-linear-gradient(
