@@ -36,10 +36,8 @@ function DotGrid() {
     let mouseY = -1000;
 
     function onMove(e: MouseEvent) {
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      mouseX = (e.clientX - rect.left) * devicePixelRatio;
-      mouseY = (e.clientY - rect.top) * devicePixelRatio;
+      mouseX = e.clientX * devicePixelRatio;
+      mouseY = e.clientY * devicePixelRatio;
     }
 
     function draw(time: number) {
@@ -66,21 +64,29 @@ function DotGrid() {
 
     resize();
     window.addEventListener('resize', resize);
-    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mousemove', onMove);
     raf = requestAnimationFrame(draw);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
-      canvas.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mousemove', onMove);
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-      style={{ opacity: 0.6 }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        opacity: 0.6,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
     />
   );
 }
@@ -259,7 +265,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       <div
         ref={aboutRef}
         className="relative w-full"
-        style={{ background: '#020617' }}
+        style={{ position: 'relative', zIndex: 1 }}
       >
         {/* Section comment header */}
         <div
