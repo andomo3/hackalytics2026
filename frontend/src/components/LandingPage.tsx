@@ -256,32 +256,43 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       </div>
 
       {/* ===== ABOUT -- BRUTALIST BENTO GRID ===== */}
-      <div ref={aboutRef} className="relative z-10 w-full">
+      <div
+        ref={aboutRef}
+        className="relative w-full"
+        style={{ background: '#020617' }}
+      >
         {/* Section comment header */}
-        <motion.div
-          className="font-mono text-xs tracking-widest px-8 pt-16 pb-2 flex items-center gap-4"
-          style={{ color: '#334155' }}
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-        >
-          <span>{'// SECTION: RAW_DATA'}</span>
-          <div className="flex-1 h-px" style={{ background: 'rgba(34, 211, 238, 0.06)' }} />
-        </motion.div>
-
         <div
-          className="font-mono text-7xl font-bold px-8 pb-10"
-          style={{ color: 'rgba(34, 211, 238, 0.04)' }}
+          className="font-mono text-left"
+          style={{ maxWidth: '1200px', margin: '0 auto', padding: '64px 24px 0' }}
         >
-          002
+          <motion.div
+            className="flex items-center gap-4 mb-2"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            <span className="text-xs tracking-widest" style={{ color: '#334155' }}>{'// SECTION: RAW_DATA'}</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(34, 211, 238, 0.06)' }} />
+          </motion.div>
+
+          <div
+            className="text-7xl font-bold"
+            style={{ color: 'rgba(34, 211, 238, 0.04)', marginBottom: '40px' }}
+          >
+            002
+          </div>
         </div>
 
         {/* Bento grid */}
         <div
-          className="grid gap-px mx-auto px-6 pb-24"
           style={{
-            maxWidth: '1200px',
+            display: 'grid',
             gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: '1px',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 24px 96px',
             background: 'rgba(34, 211, 238, 0.03)',
           }}
         >
@@ -294,40 +305,47 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           ].map((m) => (
             <BentoCell
               key={m.label}
-              className="p-6"
-              style={{ gridColumn: 'span 3' }}
+              style={{ gridColumn: 'span 3', padding: '24px' }}
             >
-              <div className="text-xs tracking-widest mb-3" style={{ color: '#475569' }}>
+              <div
+                className="font-mono text-xs tracking-widest"
+                style={{ color: '#475569', marginBottom: '12px', textAlign: 'left' }}
+              >
                 {m.label}
               </div>
-              <div className="text-3xl font-bold" style={{ color: m.color }}>
+              <div
+                className="font-mono text-3xl font-bold"
+                style={{ color: m.color, textAlign: 'left' }}
+              >
                 <AnimCounter target={m.value} suffix={m.suffix} />
               </div>
             </BentoCell>
           ))}
 
           {/* ---- Terminal cell (8 cols) ---- */}
-          <BentoCell
-            className="p-0"
-            style={{ gridColumn: 'span 8' }}
-          >
+          <BentoCell style={{ gridColumn: 'span 8', padding: '0' }}>
             {/* Terminal header bar */}
             <div
-              className="flex items-center justify-between px-4 py-2"
-              style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.08)' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 16px',
+                borderBottom: '1px solid rgba(34, 211, 238, 0.08)',
+              }}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold" style={{ color: '#22d3ee' }}>crowdshield.sys</span>
-                <span className="text-xs" style={{ color: '#334155' }}>_</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="font-mono text-xs font-bold" style={{ color: '#22d3ee' }}>crowdshield.sys</span>
+                <span className="font-mono text-xs" style={{ color: '#334155' }}>_</span>
               </div>
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ef4444' }} />
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }} />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }} />
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }} />
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
               </div>
             </div>
             {/* Terminal body */}
-            <div className="p-5 text-xs leading-relaxed" style={{ color: '#64748b' }}>
+            <div className="font-mono text-xs" style={{ padding: '20px', lineHeight: '1.8', color: '#64748b', textAlign: 'left' }}>
               <div style={{ color: '#475569' }}>{'>'} initializing crowdshield v1.0.0...</div>
               <div style={{ color: '#475569' }}>{'>'} loading seattle traffic data (2018-2024)...</div>
               <div style={{ color: '#10b981' }}>{'>'} xgboost model loaded -- 94.2% accuracy</div>
@@ -335,7 +353,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               <div style={{ color: '#22d3ee' }}>{'>'} 40 intersection sensors calibrated</div>
               <div style={{ color: '#22d3ee' }}>{'>'} leaflet tactical map initialized</div>
               <div style={{ color: '#10b981' }}>{'>'} all systems nominal. ready for simulation.</div>
-              <div className="mt-3 flex items-center gap-1">
+              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: '#22d3ee' }}>$</span>
                 <motion.span
                   style={{ color: '#94a3b8' }}
@@ -349,25 +367,28 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           </BentoCell>
 
           {/* ---- Status table (4 cols) ---- */}
-          <BentoCell
-            className="p-5"
-            style={{ gridColumn: 'span 4' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold tracking-wider" style={{ color: '#22d3ee' }}>scenario.status</span>
+          <BentoCell style={{ gridColumn: 'span 4', padding: '20px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '16px',
+              }}
+            >
+              <span className="font-mono text-xs font-bold tracking-wider" style={{ color: '#22d3ee' }}>scenario.status</span>
             </div>
             <StatusRow label="Normal Game" status="ONLINE" value="68K" />
             <StatusRow label="High Attendance" status="ACTIVE" value="72K+" />
             <StatusRow label="Q3 Blowout" status="STANDBY" value="72K+" />
-            <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(34, 211, 238, 0.06)' }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs" style={{ color: '#475569' }}>Threat Coverage</span>
-                <span className="text-xs font-bold" style={{ color: '#22d3ee' }}>96%</span>
+            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(34, 211, 238, 0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span className="font-mono text-xs" style={{ color: '#475569' }}>Threat Coverage</span>
+                <span className="font-mono text-xs font-bold" style={{ color: '#22d3ee' }}>96%</span>
               </div>
-              <div className="w-full h-1" style={{ background: 'rgba(34, 211, 238, 0.1)' }}>
+              <div style={{ width: '100%', height: '4px', background: 'rgba(34, 211, 238, 0.1)' }}>
                 <motion.div
-                  className="h-full"
-                  style={{ background: '#22d3ee' }}
+                  style={{ height: '100%', background: '#22d3ee' }}
                   initial={{ width: '0%' }}
                   whileInView={{ width: '96%' }}
                   viewport={{ once: true }}
@@ -378,32 +399,32 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           </BentoCell>
 
           {/* ---- Description cell (7 cols) ---- */}
-          <BentoCell
-            className="p-6"
-            style={{ gridColumn: 'span 7' }}
-          >
-            <div className="text-xs tracking-widest mb-4" style={{ color: '#334155' }}>MANIFEST.md</div>
-            <h3 className="text-lg font-bold tracking-wide mb-4" style={{ color: '#e2e8f0' }}>
+          <BentoCell style={{ gridColumn: 'span 7', padding: '24px' }}>
+            <div className="font-mono text-xs tracking-widest" style={{ color: '#334155', marginBottom: '16px', textAlign: 'left' }}>MANIFEST.md</div>
+            <h3
+              className="font-mono text-lg font-bold tracking-wide"
+              style={{ color: '#e2e8f0', marginBottom: '16px', textAlign: 'left' }}
+            >
               Infrastructure built for{' '}
               <span style={{ color: '#22d3ee' }}>crowd intelligence</span>
             </h3>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: '#64748b' }}>
+            <p
+              className="font-mono text-xs"
+              style={{ color: '#64748b', lineHeight: '1.7', marginBottom: '16px', textAlign: 'left' }}
+            >
               When 72,000 fans exit a World Cup match simultaneously, crowd density surges create
               life-threatening conditions at key intersections. CrowdShield uses XGBoost predictions
               and Pydantic AI routing agents to model mass egress events and generate real-time
               rerouting recommendations -- transforming static crowd plans into adaptive intelligence.
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: '#475569' }}>
+            <p className="font-mono text-xs" style={{ color: '#475569', lineHeight: '1.7', textAlign: 'left' }}>
               Built for the Hacklytics 2026 hackathon at Georgia Tech. Best AI for Human Safety track.
             </p>
           </BentoCell>
 
           {/* ---- Tech stack cell (5 cols) ---- */}
-          <BentoCell
-            className="p-5"
-            style={{ gridColumn: 'span 5' }}
-          >
-            <div className="text-xs font-bold tracking-wider mb-4" style={{ color: '#22d3ee' }}>tech.stack</div>
+          <BentoCell style={{ gridColumn: 'span 5', padding: '20px' }}>
+            <div className="font-mono text-xs font-bold tracking-wider" style={{ color: '#22d3ee', marginBottom: '16px', textAlign: 'left' }}>tech.stack</div>
             {[
               { name: 'React 18 + Vite', desc: 'Frontend runtime' },
               { name: 'Leaflet.js', desc: 'Dark tactical map' },
@@ -414,18 +435,24 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             ].map((t) => (
               <div
                 key={t.name}
-                className="flex items-center justify-between py-1.5"
-                style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.04)' }}
+                className="font-mono text-xs"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 0',
+                  borderBottom: '1px solid rgba(34, 211, 238, 0.04)',
+                }}
               >
-                <span className="text-xs" style={{ color: '#94a3b8' }}>{t.name}</span>
-                <span className="text-xs" style={{ color: '#334155' }}>{t.desc}</span>
+                <span style={{ color: '#94a3b8' }}>{t.name}</span>
+                <span style={{ color: '#334155' }}>{t.desc}</span>
               </div>
             ))}
           </BentoCell>
         </div>
 
         {/* Bottom separator */}
-        <div className="flex justify-center pb-16">
+        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '64px' }}>
           <div
             style={{
               width: '80px',
