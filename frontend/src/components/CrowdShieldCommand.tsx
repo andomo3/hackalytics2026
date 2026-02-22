@@ -133,14 +133,7 @@ export function CrowdShieldCommand() {
             >
               JUMP 18:45
             </button>
-            {error && (
-              <button
-                onClick={refresh}
-                className="text-amber-400 border border-amber-400 px-2 py-0.5 hover:bg-amber-400 hover:text-black transition-colors"
-              >
-                RETRY API
-              </button>
-            )}
+
           </div>
         </div>
       </motion.div>
