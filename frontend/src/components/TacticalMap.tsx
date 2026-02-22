@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-<<<<<<< HEAD
-import { useEffect, useRef, useState } from 'react';
-import { Hotspot } from './types';
-=======
 import { MapContainer, TileLayer, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -12,7 +8,6 @@ import { Hotspot, Intersection } from './mockData';
 // Lumen Field center coordinates
 const LUMEN_FIELD: [number, number] = [47.5952, -122.3316];
 const DEFAULT_ZOOM = 15;
->>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
 
 interface TacticalMapProps {
   dangerRoutes: number[][][];

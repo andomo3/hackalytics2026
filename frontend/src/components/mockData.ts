@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-export type { GameState, Hotspot, TimelineMinute, ScenarioMetadata, ScenarioData } from './types';
-import type { GameState, Hotspot, TimelineMinute, ScenarioMetadata, ScenarioData } from './types';
-=======
 // Mock data following the SafeTransit data contract
 export interface GameState {
   home: number;
@@ -65,7 +61,6 @@ export interface ScenarioData {
   scenario_metadata: ScenarioMetadata;
   timeline: TimelineMinute[];
 }
->>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
 
 // ====== Intersection Grid ======
 // Real Seattle intersections within ~1 mile of Lumen Field (47.5952, -122.3316)

@@ -72,17 +72,6 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
               <div className="font-mono text-xs mb-1 opacity-70">
                 {String.fromCharCode(65 + index)}
               </div>
-<<<<<<< HEAD
-              <div className="font-mono font-bold text-[9px] mb-0.5 leading-tight">
-                {scenario.name.replace(/^Scenario [A-C]: /, '')}
-              </div>
-              {isSelected && scenario.description && (
-                <div className="font-mono text-[6px] mb-0.5 opacity-60 leading-tight line-clamp-2">
-                  {scenario.description}
-                </div>
-              )}
-              <div className={`font-mono text-[7px] font-bold ${
-=======
               <div className="font-mono font-bold text-xs mb-1 leading-tight text-left">
                 {scenarioLabel}
               </div>
@@ -93,7 +82,6 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
                 {scenario.date ?? '--'} | {scenario.attendance.toLocaleString()}
               </div>
               <div className={`font-mono text-xs font-bold ${
->>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
                 isSelected ? '' : 'text-slate-500'
               }`}>
                 {scenario.risk_level}

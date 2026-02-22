@@ -45,6 +45,7 @@ frontend/.vite/
 *.log
 *.tmp
 *.swp
+artifacts/
 
 # Databases and local cache
 *.db

@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./mainData:/mainData:ro
+      - ./exports:/mainData:ro
 
   frontend:
     build:
