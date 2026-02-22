@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { ScenarioSelector } from './ScenarioSelector';
 import { TimelineSlider } from './TimelineSlider';
 import { TacticalMap } from './TacticalMap';
@@ -25,7 +25,7 @@ function getScenarioStartMinute(scenarioId: string, riskLevel: string): number {
   return 1140;
 }
 
-export function CrowdShieldCommand({ onExit }: { onExit?: () => void }) {
+export function CrowdShieldCommand() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [currentMinute, setCurrentMinute] = useState(1125);
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
@@ -99,57 +99,6 @@ export function CrowdShieldCommand({ onExit }: { onExit?: () => void }) {
 
   return (
     <div className="w-full h-full bg-slate-950 relative overflow-hidden flex flex-col">
-      {/* ===== Header Bar ===== */}
-      <motion.div
-        className="flex items-center justify-between border-b-2 border-cyan-400 px-4 py-2"
-        style={{ backgroundColor: 'rgba(2, 6, 23, 0.95)' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="flex items-center gap-4">
-          {/* Exit button integrated into header */}
-          {onExit && (
-            <motion.button
-              onClick={onExit}
-              className="font-mono text-xs px-3 py-1 border rounded transition-all"
-              style={{
-                borderColor: 'rgba(239, 68, 68, 0.5)',
-                color: '#ef4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.05)',
-              }}
-              whileHover={{
-                borderColor: 'rgba(239, 68, 68, 1)',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              }}
-            >
-              {'< EXIT'}
-            </motion.button>
-          )}
-
-          <div>
-            <h1 className="font-mono text-lg font-bold text-cyan-400 tracking-wider">
-              CROWDSHIELD
-            </h1>
-            <div className="font-mono text-xs text-slate-400">
-              {isLoading ? 'Loading cache...' : `Source: ${dataSource.toUpperCase()}`}
-              {error ? ` | ${error}` : ''}
-              <span className="ml-3 text-slate-500">ESC to exit</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Current scenario badge in header */}
-        {scenarioOptions[selectedScenarioIndex] && (
-          <div className="font-mono text-right">
-            <div className="text-xs text-slate-400">ACTIVE SCENARIO</div>
-            <div className="text-sm text-cyan-300 font-bold">
-              {scenarioOptions[selectedScenarioIndex].label}
-            </div>
-          </div>
-        )}
-      </motion.div>
-
       {/* ===== Scenario Selector ===== */}
       <motion.div
         className="px-4 py-2"
@@ -158,16 +107,24 @@ export function CrowdShieldCommand({ onExit }: { onExit?: () => void }) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <ScenarioSelector
-          scenarios={scenarioOptions}
-          selectedScenario={selectedScenarioIndex}
-          onSelectScenario={handleScenarioChange}
-        />
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <ScenarioSelector
+              scenarios={scenarioOptions}
+              selectedScenario={selectedScenarioIndex}
+              onSelectScenario={handleScenarioChange}
+            />
+          </div>
+          <div className="font-mono text-xs text-slate-500">
+            {isLoading ? 'Loading...' : `SRC: ${dataSource.toUpperCase()}`}
+            {error ? ` | ${error}` : ''}
+          </div>
+        </div>
       </motion.div>
 
       {/* ===== Main Content -- Map + Alert Panel ===== */}
       <div className="flex-1 flex gap-3 px-3 pb-2 min-h-0">
-        {/* Map fills remaining space */}
+        {/* Map fills remaining space -- NO AnimatePresence re-keying */}
         <motion.div
           className="relative overflow-hidden flex-1 min-h-0"
           style={{ borderRadius: '4px', border: '1px solid rgba(51, 65, 85, 0.5)' }}
@@ -175,27 +132,17 @@ export function CrowdShieldCommand({ onExit }: { onExit?: () => void }) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${selectedScenarioId ?? selectedScenarioIndex}-${clampedMinute}`}
-              initial={{ opacity: 0.5 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.1 }}
-              className="h-full"
-            >
-              <TacticalMap
-                dangerRoutes={currentData.danger_routes}
-                safeRoutes={currentData.safe_routes}
-                blurbs={currentData.blurbs}
-                hotspots={currentData.hotspots}
-                intersections={currentData.intersections ?? []}
-                onHotspotClick={setSelectedHotspot}
-              />
-            </motion.div>
-          </AnimatePresence>
+          <TacticalMap
+            dangerRoutes={currentData.danger_routes}
+            safeRoutes={currentData.safe_routes}
+            blurbs={currentData.blurbs}
+            hotspots={currentData.hotspots}
+            intersections={currentData.intersections ?? []}
+            onHotspotClick={setSelectedHotspot}
+          />
         </motion.div>
 
-        {/* Alert Panel -- widened from 180px to 320px */}
+        {/* Alert Panel -- 320px wide */}
         <motion.div
           className="overflow-hidden"
           style={{ width: '320px', minWidth: '280px' }}
