@@ -181,10 +181,10 @@ export function CrowdShieldCommand() {
           />
         </motion.div>
 
-        {/* Alert Panel -- 320px wide */}
+        {/* Alert Panel -- 360px wide for projector readability */}
         <motion.div
           className="overflow-hidden"
-          style={{ width: '320px', minWidth: '280px' }}
+          style={{ width: '360px', minWidth: '320px' }}
           initial={{ opacity: 0, x: 100 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
