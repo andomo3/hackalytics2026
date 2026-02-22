@@ -4,9 +4,40 @@ interface TimelineSliderProps {
   currentMinute: number;
   onMinuteChange: (minute: number) => void;
   threatScore: number;
+  threatSeries?: number[];
 }
 
-export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: TimelineSliderProps) {
+function gradientColorForThreat(score: number): string {
+  if (score >= 0.8) return 'rgba(239, 68, 68, 0.45)';
+  if (score >= 0.6) return 'rgba(251, 191, 36, 0.45)';
+  if (score >= 0.4) return 'rgba(250, 204, 21, 0.45)';
+  return 'rgba(71, 85, 105, 0.35)';
+}
+
+function buildThreatTrackGradient(threatSeries: number[] | undefined): string {
+  if (!threatSeries || threatSeries.length === 0) {
+    return 'rgba(71, 85, 105, 0.3)';
+  }
+
+  const bucketSize = 15;
+  const segments: string[] = [];
+  for (let start = 0; start < 1440; start += bucketSize) {
+    const end = Math.min(1439, start + bucketSize - 1);
+    const bucket = threatSeries.slice(start, end + 1);
+    const averageThreat =
+      bucket.length > 0
+        ? bucket.reduce((sum, value) => sum + value, 0) / bucket.length
+        : 0;
+    const color = gradientColorForThreat(averageThreat);
+    const left = (start / 1439) * 100;
+    const right = ((end + 1) / 1439) * 100;
+    segments.push(`${color} ${left}% ${right}%`);
+  }
+
+  return `linear-gradient(to right, ${segments.join(', ')})`;
+}
+
+export function TimelineSlider({ currentMinute, onMinuteChange, threatScore, threatSeries }: TimelineSliderProps) {
   const formatTime = (minute: number) => {
     const hour = Math.floor(minute / 60);
     const min = minute % 60;
@@ -51,8 +82,8 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
       <div className="relative z-10">
         {/* Header */}
         <div className="flex justify-between items-center mb-3">
-          <div className="font-mono text-cyan-400 text-xs flex items-center gap-4">
-            <span className="text-white">TIMELINE SCRUBBER</span>
+          <div className="font-mono text-cyan-400 text-sm flex items-center gap-4">
+            <span className="text-white font-bold">TIMELINE SCRUBBER</span>
             <span className="opacity-70">|</span>
             <span>
               TIME: <span className="text-emerald-400 font-bold">{formatTime(currentMinute)}</span>
@@ -83,7 +114,7 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
         {/* Slider */}
         <div className="relative">
           {/* Time markers */}
-          <div className="flex justify-between text-xs font-mono text-cyan-400 mb-2 opacity-60">
+          <div className="flex justify-between text-sm font-mono text-cyan-400 mb-2 opacity-60">
             <span>00:00</span>
             <span>06:00</span>
             <span>12:00</span>
@@ -99,25 +130,9 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore }: T
             onChange={(e) => onMinuteChange(parseInt(e.target.value))}
             className="w-full h-2 appearance-none cursor-pointer slider-timeline"
             style={{
-              background: `linear-gradient(to right, 
-                rgba(16, 185, 129, 0.3) 0%, 
-                rgba(16, 185, 129, 0.3) ${(currentMinute / 1439) * 100}%, 
-                rgba(71, 85, 105, 0.3) ${(currentMinute / 1439) * 100}%, 
-                rgba(71, 85, 105, 0.3) 100%)`
+              background: buildThreatTrackGradient(threatSeries)
             }}
           />
-          
-          {/* Game time indicator (18:00 - 21:00) */}
-          <div
-            className="absolute top-8 h-1 bg-cyan-400 bg-opacity-20 pointer-events-none"
-            style={{
-              left: '75%',
-              width: '12.5%'
-            }}
-          />
-          <div className="absolute top-10 left-[75%] text-xs font-mono text-cyan-400 opacity-50">
-            GAME TIME
-          </div>
         </div>
       </div>
       

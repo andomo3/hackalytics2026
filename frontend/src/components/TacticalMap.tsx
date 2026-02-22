@@ -98,7 +98,7 @@ function HotspotOverlays({ hotspots, onHotspotClick }: { hotspots: Hotspot[]; on
 
             {/* Density Label */}
             <div
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-mono font-bold text-black text-xs pointer-events-none"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-mono font-bold text-black text-sm pointer-events-none"
               style={{ textShadow: '0 0 4px rgba(255,255,255,0.5)' }}
             >
               {hotspot.density_pct}%
@@ -396,7 +396,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
       />
 
       {/* Map Labels */}
-      <div className="absolute bottom-2 left-2 z-[500] font-mono text-[7px] text-cyan-400 opacity-50 pointer-events-none">
+      <div className="absolute bottom-2 left-2 z-[500] font-mono text-xs text-cyan-400 opacity-50 pointer-events-none">
         <div>47.5952°N</div>
         <div>122.3316°W</div>
       </div>

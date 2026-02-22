@@ -1,5 +1,5 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
 
 export function HUDFrame() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -12,7 +12,7 @@ export function HUDFrame() {
   }, []);
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString('en-US', {
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
@@ -31,7 +31,7 @@ export function HUDFrame() {
   return (
     <>
       {/* Corner Brackets - Top Left */}
-      <motion.div 
+      <motion.div
         className="fixed top-4 left-4 w-20 h-20 pointer-events-none z-40"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.6, 1, 0.6] }}
@@ -49,7 +49,7 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Corner Brackets - Top Right */}
-      <motion.div 
+      <motion.div
         className="fixed top-4 right-4 w-20 h-20 pointer-events-none z-40"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.6, 1, 0.6] }}
@@ -67,7 +67,7 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Corner Brackets - Bottom Left */}
-      <motion.div 
+      <motion.div
         className="fixed bottom-16 left-4 w-20 h-20 pointer-events-none z-40"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.6, 1, 0.6] }}
@@ -85,7 +85,7 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Corner Brackets - Bottom Right */}
-      <motion.div 
+      <motion.div
         className="fixed bottom-16 right-4 w-20 h-20 pointer-events-none z-40"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0.6, 1, 0.6] }}
@@ -141,7 +141,7 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Side indicators - Left */}
-      <motion.div 
+      <motion.div
         className="fixed left-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-none z-40"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -154,12 +154,12 @@ export function HUDFrame() {
             style={{
               boxShadow: '0 0 10px rgba(0, 255, 255, 0.6)'
             }}
-            animate={{ 
+            animate={{
               opacity: [0.3, 1, 0.3],
               height: ['20px', '32px', '20px']
             }}
-            transition={{ 
-              duration: 2, 
+            transition={{
+              duration: 2,
               repeat: Infinity,
               delay: i * 0.3
             }}

@@ -27,6 +27,10 @@ export interface TimelineMinute {
   safe_routes: number[][][];
   blurbs: Array<{ lat: number; lng: number; text: string }>;
   hotspots: Hotspot[];
+  severity?: number;
+  estimated_crowd_volume?: number;
+  transit_load?: Record<string, number>;
+  pedestrian_volume?: Record<string, number>;
 }
 
 export interface ScenarioMetadata {
@@ -35,6 +39,9 @@ export interface ScenarioMetadata {
   attendance: number;
   description: string;
   risk_level: string;
+  date?: string;
+  teams?: string;
+  profile_type?: string;
 }
 
 export interface ScenarioData {
@@ -297,3 +304,31 @@ export const scenarios: ScenarioData[] = [
     timeline: generateTimeline('blowout')
   }
 ];
+
+export const mockScenarioMetadata: ScenarioMetadata[] = scenarios.map(
+  (scenario) => scenario.scenario_metadata
+);
+
+export function findMockScenarioById(scenarioId: string): ScenarioData {
+  const exactMatch = scenarios.find(
+    (scenario) => scenario.scenario_metadata.id === scenarioId
+  );
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const lowered = scenarioId.toLowerCase();
+  if (lowered.includes('blowout') || lowered.includes('scenario_c') || lowered.includes('_c')) {
+    return scenarios[2];
+  }
+  if (
+    lowered.includes('high') ||
+    lowered.includes('close') ||
+    lowered.includes('quarter') ||
+    lowered.includes('scenario_b') ||
+    lowered.includes('_b')
+  ) {
+    return scenarios[1];
+  }
+  return scenarios[0];
+}
