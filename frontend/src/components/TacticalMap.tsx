@@ -1,6 +1,10 @@
 import { motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { Hotspot } from './mockData';
+import { LUMEN_FIELD_TRAFFIC } from '../data/staticTraffic';
+import '../styles/leaflet-retro.css';
 
 interface TacticalMapProps {
   dangerRoutes: number[][][];
@@ -10,196 +14,62 @@ interface TacticalMapProps {
   onHotspotClick: (hotspot: Hotspot) => void;
 }
 
-export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHotspotClick }: TacticalMapProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  
-  // Convert lat/lng to canvas coordinates
-  const latLngToXY = (lat: number, lng: number, width: number, height: number) => {
-    // Lumen Field area bounds
-    const minLat = 47.585;
-    const maxLat = 47.615;
-    const minLng = -122.34;
-    const maxLng = -122.32;
-    
-    const x = ((lng - minLng) / (maxLng - minLng)) * width;
-    const y = ((maxLat - lat) / (maxLat - minLat)) * height;
-    
-    return { x, y };
+// Component to render hotspots as HTML overlays
+function HotspotOverlays({ hotspots, onHotspotClick }: { hotspots: Hotspot[]; onHotspotClick: (hotspot: Hotspot) => void }) {
+  const map = useMap();
+  const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+
+  const updatePositions = () => {
+    const newPositions = new Map<string, { x: number; y: number }>();
+    hotspots.forEach((hotspot) => {
+      const point = map.latLngToContainerPoint([hotspot.lat, hotspot.lng]);
+      newPositions.set(hotspot.id, { x: point.x, y: point.y });
+    });
+    setPositions(newPositions);
   };
-  
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Clear canvas
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Draw grid background
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    
-    for (let i = 0; i < width; i += 20) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, height);
-      ctx.stroke();
-    }
-    
-    for (let i = 0; i < height; i += 20) {
-      ctx.beginPath();
-      ctx.moveTo(0, i);
-      ctx.lineTo(width, i);
-      ctx.stroke();
-    }
-    
-    // Draw Lumen Field location
-    const lumenField = latLngToXY(47.5952, -122.3316, width, height);
-    ctx.fillStyle = '#00ffff';
-    ctx.beginPath();
-    ctx.arc(lumenField.x, lumenField.y, 8, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.strokeStyle = '#00ffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(lumenField.x, lumenField.y, 15, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    // Draw safe routes (green)
-    safeRoutes.forEach((route) => {
-      if (route.length < 2) return;
-      
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = 'rgba(16, 185, 129, 0.6)';
-      ctx.shadowBlur = 8;
-      
-      ctx.beginPath();
-      const start = latLngToXY(route[0][0], route[0][1], width, height);
-      ctx.moveTo(start.x, start.y);
-      
-      for (let i = 1; i < route.length; i++) {
-        const point = latLngToXY(route[i][0], route[i][1], width, height);
-        ctx.lineTo(point.x, point.y);
-      }
-      
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    });
-    
-    // Draw danger routes (red, dashed)
-    dangerRoutes.forEach((route) => {
-      if (route.length < 2) return;
-      
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([10, 10]);
-      
-      ctx.beginPath();
-      const start = latLngToXY(route[0][0], route[0][1], width, height);
-      ctx.moveTo(start.x, start.y);
-      
-      for (let i = 1; i < route.length; i++) {
-        const point = latLngToXY(route[i][0], route[i][1], width, height);
-        ctx.lineTo(point.x, point.y);
-      }
-      
-      ctx.stroke();
-      ctx.setLineDash([]);
-    });
-    
-    setMapLoaded(true);
-  }, [dangerRoutes, safeRoutes]);
-  
+    updatePositions();
+  }, [hotspots, map]);
+
+  useMapEvents({
+    move: updatePositions,
+    zoom: updatePositions,
+    zoomend: updatePositions,
+    moveend: updatePositions
+  });
+
   // Helper function to get hotspot size based on density (exponential scaling)
   const getHotspotSize = (density: number) => {
-    // Base size at 50% = 20px, max size at 120% = 60px
-    const normalized = (density - 50) / 70; // 0 to 1 range
-    const exponential = Math.pow(normalized, 1.5); // Exponential curve
+    const normalized = (density - 50) / 70;
+    const exponential = Math.pow(normalized, 1.5);
     return 20 + (exponential * 40);
   };
-  
+
   // Helper function to get hotspot color
   const getHotspotColor = (density: number) => {
     if (density > 90) return { bg: 'bg-red-500', border: 'border-red-600', shadow: 'rgba(239, 68, 68, 0.8)' };
     if (density > 70) return { bg: 'bg-amber-400', border: 'border-amber-500', shadow: 'rgba(245, 158, 11, 0.8)' };
     return { bg: 'bg-cyan-400', border: 'border-cyan-500', shadow: 'rgba(0, 255, 255, 0.8)' };
   };
-  
-  // Convert lat/lng to percentage position for hotspots
-  const latLngToPercent = (lat: number, lng: number) => {
-    const minLat = 47.585;
-    const maxLat = 47.615;
-    const minLng = -122.34;
-    const maxLng = -122.32;
-    
-    const left = ((lng - minLng) / (maxLng - minLng)) * 100;
-    const top = ((maxLat - lat) / (maxLat - minLat)) * 100;
-    
-    return { left: `${left}%`, top: `${top}%` };
-  };
-  
+
   return (
-    <div className="relative w-full h-full border-2 border-slate-800 overflow-hidden bg-slate-950">
-      {/* Custom crosshair cursor style */}
-      <style>{`
-        .hotspot-interactive {
-          cursor: crosshair;
-        }
-        .hotspot-interactive:hover {
-          cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="8" fill="none" stroke="cyan" stroke-width="2"/><line x1="16" y1="0" x2="16" y2="32" stroke="cyan" stroke-width="1"/><line x1="0" y1="16" x2="32" y2="16" stroke="cyan" stroke-width="1"/></svg>') 16 16, crosshair;
-        }
-      `}</style>
-      
-      {/* Map Title Overlay */}
-      <motion.div
-        className="absolute top-2 left-2 z-[1000] font-mono pointer-events-none"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <div className="border border-cyan-400 bg-slate-950 bg-opacity-90 p-2 backdrop-blur-sm">
-          <div className="text-cyan-400 text-xs mb-0.5">TACTICAL</div>
-          <div className="text-white font-bold text-sm">LUMEN FIELD</div>
-          <div className="text-emerald-400 text-xs mt-0.5">
-            {safeRoutes.length > 0 && <span className="mr-1">✓{safeRoutes.length}</span>}
-            {dangerRoutes.length > 0 && <span className="text-red-500">⚠{dangerRoutes.length}</span>}
-            {hotspots.length > 0 && <span className="ml-1">🎯{hotspots.length}</span>}
-          </div>
-        </div>
-      </motion.div>
-      
-      {/* Canvas Map */}
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        className="w-full h-full"
-        style={{ imageRendering: 'pixelated' }}
-      />
-      
-      {/* Interactive Hotspots - HTML Overlay */}
+    <>
       {hotspots.map((hotspot) => {
-        const position = latLngToPercent(hotspot.lat, hotspot.lng);
+        const pos = positions.get(hotspot.id);
+        if (!pos) return null;
+
         const size = getHotspotSize(hotspot.density_pct);
         const colors = getHotspotColor(hotspot.density_pct);
         const pulseIntensity = hotspot.density_pct > 90 ? 0.6 : hotspot.density_pct > 70 ? 0.4 : 0.2;
-        
+
         return (
           <motion.div
             key={hotspot.id}
-            className="absolute z-[600] hotspot-interactive"
+            className="absolute z-[600] hotspot-interactive pointer-events-auto"
             style={{
-              left: position.left,
-              top: position.top,
+              left: `${pos.x}px`,
+              top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)'
             }}
             initial={{ scale: 0, opacity: 0 }}
@@ -225,7 +95,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
                 ease: 'easeInOut'
               }}
             />
-            
+
             {/* Density Label */}
             <div
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-mono font-bold text-black text-sm pointer-events-none"
@@ -233,7 +103,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
             >
               {hotspot.density_pct}%
             </div>
-            
+
             {/* Expanding Ring Effect for Critical */}
             {hotspot.status === 'CRITICAL' && (
               <motion.div
@@ -256,22 +126,52 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
           </motion.div>
         );
       })}
-      
-      {/* Blurb Markers */}
+    </>
+  );
+}
+
+// Component to render blurbs as HTML overlays
+function BlurbMarkers({ blurbs }: { blurbs: Array<{ lat: number; lng: number; text: string }> }) {
+  const map = useMap();
+  const [positions, setPositions] = useState<Map<number, { x: number; y: number }>>(new Map());
+
+  const updatePositions = () => {
+    const newPositions = new Map<number, { x: number; y: number }>();
+    blurbs.forEach((blurb, index) => {
+      const point = map.latLngToContainerPoint([blurb.lat, blurb.lng]);
+      newPositions.set(index, { x: point.x, y: point.y });
+    });
+    setPositions(newPositions);
+  };
+
+  useEffect(() => {
+    updatePositions();
+  }, [blurbs, map]);
+
+  useMapEvents({
+    move: updatePositions,
+    zoom: updatePositions,
+    zoomend: updatePositions,
+    moveend: updatePositions
+  });
+
+  return (
+    <>
       {blurbs.map((blurb, index) => {
+        const pos = positions.get(index);
+        if (!pos) return null;
+
         const isWarning = blurb.text.includes('HIGH') || blurb.text.includes('110%');
-        // Position markers based on lat/lng
-        const position = (() => {
-          if (blurb.lat === 47.5980) return { top: '45%', left: '52%' }; // Stadium Station
-          if (blurb.lat === 47.5990) return { top: '42%', left: '58%' }; // King St
-          return { top: '50%', left: '50%' };
-        })();
-        
+
         return (
           <motion.div
             key={`blurb-${index}`}
-            className="absolute z-[500] cursor-pointer group"
-            style={position}
+            className="absolute z-[500] cursor-pointer group pointer-events-auto"
+            style={{
+              left: `${pos.x}px`,
+              top: `${pos.y}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.5 + index * 0.1 }}
@@ -284,16 +184,16 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
               animate={{ opacity: [0.6, 1, 0.6] }}
               transition={{ duration: 2, repeat: Infinity }}
               style={{
-                boxShadow: isWarning 
+                boxShadow: isWarning
                   ? '0 0 15px rgba(239, 68, 68, 0.8)'
                   : '0 0 15px rgba(245, 158, 11, 0.8)'
               }}
             />
-            
+
             {/* Popup on hover */}
             <div className="absolute left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <div className="border-2 border-cyan-400 bg-slate-950 bg-opacity-95 p-2 backdrop-blur-md whitespace-nowrap">
-                <div className="font-mono text-sm">
+              <div className="border-2 border-cyan-400 bg-slate-700 bg-opacity-95 p-2 backdrop-blur-md whitespace-nowrap">
+                <div className="font-mono text-xs">
                   <div className="font-bold text-cyan-400 mb-1">ALERT</div>
                   <div className={
                     isWarning ? 'text-red-500' :
@@ -308,9 +208,164 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
           </motion.div>
         );
       })}
-      
+    </>
+  );
+}
+
+// Component to set up map bounds and restrictions
+function MapBounds() {
+  const map = useMap();
+
+  useEffect(() => {
+    const bounds = new LatLngBounds(
+      [47.585, -122.34],
+      [47.615, -122.32]
+    );
+    map.setMaxBounds(bounds);
+  }, [map]);
+
+  return null;
+}
+
+export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHotspotClick }: TacticalMapProps) {
+  const mapRef = useRef<LeafletMap | null>(null);
+
+  // Memoize traffic polylines
+  const trafficPolylines = useMemo(() => {
+    return LUMEN_FIELD_TRAFFIC.map((segment) => (
+      <Polyline
+        key={segment.id}
+        positions={segment.coordinates}
+        pathOptions={{
+          color: segment.color,
+          weight: 6,
+          opacity: segment.opacity,
+          lineCap: 'round',
+          lineJoin: 'round',
+          className: 'traffic-segment'
+        }}
+      />
+    ));
+  }, []);
+
+  // Memoize safe route polylines
+  const safeRoutePolylines = useMemo(() => {
+    return safeRoutes.map((route, index) => (
+      <Polyline
+        key={`safe-${index}`}
+        positions={route as [number, number][]}
+        pathOptions={{
+          color: '#10b981',
+          weight: 5,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+          className: 'route-safe'
+        }}
+      />
+    ));
+  }, [safeRoutes]);
+
+  // Memoize danger route polylines
+  const dangerRoutePolylines = useMemo(() => {
+    return dangerRoutes.map((route, index) => (
+      <Polyline
+        key={`danger-${index}`}
+        positions={route as [number, number][]}
+        pathOptions={{
+          color: '#ef4444',
+          weight: 5,
+          opacity: 0.85,
+          dashArray: '10, 10',
+          lineCap: 'round',
+          lineJoin: 'round',
+          className: 'route-danger'
+        }}
+      />
+    ));
+  }, [dangerRoutes]);
+
+  return (
+    <div className="relative w-full h-full border-2 border-slate-600 overflow-hidden bg-slate-800">
+      {/* Custom crosshair cursor style */}
+      <style>{`
+        .hotspot-interactive {
+          cursor: crosshair;
+        }
+        .hotspot-interactive:hover {
+          cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="8" fill="none" stroke="cyan" stroke-width="2"/><line x1="16" y1="0" x2="16" y2="32" stroke="cyan" stroke-width="1"/><line x1="0" y1="16" x2="32" y2="16" stroke="cyan" stroke-width="1"/></svg>') 16 16, crosshair;
+        }
+      `}</style>
+
+      {/* Map Title Overlay */}
+      <motion.div
+        className="absolute top-2 left-2 z-[1000] font-mono pointer-events-none"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <div className="border border-cyan-400 bg-slate-700 bg-opacity-90 p-1.5 backdrop-blur-sm">
+          <div className="text-cyan-400 text-[8px] mb-0.5">TACTICAL</div>
+          <div className="text-white font-bold text-[9px]">LUMEN FIELD</div>
+          <div className="text-emerald-400 text-[7px] mt-0.5">
+            {safeRoutes.length > 0 && <span className="mr-1">✓{safeRoutes.length}</span>}
+            {dangerRoutes.length > 0 && <span className="text-red-500">⚠{dangerRoutes.length}</span>}
+            {hotspots.length > 0 && <span className="ml-1">🎯{hotspots.length}</span>}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Leaflet Map Container */}
+      <MapContainer
+        ref={mapRef}
+        center={[47.5952, -122.3316]}
+        zoom={14}
+        minZoom={13}
+        maxZoom={16}
+        zoomControl={false}
+        attributionControl={false}
+        style={{ width: '100%', height: '100%', zIndex: 0 }}
+        className="leaflet-container"
+      >
+        <MapBounds />
+
+        {/* OpenStreetMap Standard Tile Layer */}
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          maxZoom={19}
+        />
+
+        {/* Traffic Overlay */}
+        {trafficPolylines}
+
+        {/* Safe Routes */}
+        {safeRoutePolylines}
+
+        {/* Danger Routes */}
+        {dangerRoutePolylines}
+
+        {/* Hotspot Overlays */}
+        <HotspotOverlays hotspots={hotspots} onHotspotClick={onHotspotClick} />
+
+        {/* Blurb Markers */}
+        <BlurbMarkers blurbs={blurbs} />
+      </MapContainer>
+
+      {/* CSS Grid Overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[100]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '20px 20px'
+        }}
+      />
+
       {/* Scanline effect overlay */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[999]"
         style={{
           background: `repeating-linear-gradient(
@@ -322,7 +377,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
           )`
         }}
       />
-      
+
       {/* Scanning line effect */}
       <motion.div
         className="absolute inset-0 pointer-events-none z-[999]"
@@ -339,7 +394,7 @@ export function TacticalMap({ dangerRoutes, safeRoutes, blurbs, hotspots, onHots
           ease: 'linear'
         }}
       />
-      
+
       {/* Map Labels */}
       <div className="absolute bottom-2 left-2 z-[500] font-mono text-xs text-cyan-400 opacity-50 pointer-events-none">
         <div>47.5952°N</div>

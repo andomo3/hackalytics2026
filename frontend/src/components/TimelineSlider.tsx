@@ -59,14 +59,14 @@ export function TimelineSlider({ currentMinute, onMinuteChange, threatScore, thr
   };
 
   return (
-    <div className="w-full px-6 py-4 border-2 border-slate-800 relative overflow-hidden"
+    <div className="w-full px-6 py-4 border-2 border-slate-600 relative overflow-hidden"
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+        backgroundColor: 'rgba(51, 65, 85, 0.8)',
         backdropFilter: 'blur(20px)'
       }}
     >
       {/* Scanlines */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `repeating-linear-gradient(

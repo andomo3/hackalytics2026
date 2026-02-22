@@ -31,21 +31,21 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
             className={`flex-1 border p-2 relative overflow-hidden transition-all ${
               isSelected
                 ? `${riskColor} bg-opacity-10 shadow-lg`
-                : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                : 'border-slate-600 text-slate-400 hover:border-slate-500'
             }`}
             style={{
-              backgroundColor: isSelected 
-                ? scenario.risk_level === 'LOW' ? 'rgba(16, 185, 129, 0.1)'
-                : scenario.risk_level === 'MEDIUM' ? 'rgba(251, 191, 36, 0.1)'
-                : 'rgba(239, 68, 68, 0.1)'
-                : 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: isSelected
+                ? scenario.risk_level === 'LOW' ? 'rgba(16, 185, 129, 0.15)'
+                : scenario.risk_level === 'MEDIUM' ? 'rgba(251, 191, 36, 0.15)'
+                : 'rgba(239, 68, 68, 0.15)'
+                : 'rgba(51, 65, 85, 0.6)',
               backdropFilter: 'blur(10px)'
             }}
             whileHover={{ scale: isSelected ? 1 : 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             {/* Scanline effect */}
-            <div 
+            <div
               className="absolute inset-0 pointer-events-none"
               style={{
                 background: `repeating-linear-gradient(

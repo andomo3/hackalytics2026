@@ -1,0 +1,141 @@
+/* Leaflet Styling - Google Maps style */
+
+/* Light map container */
+.leaflet-container {
+  background: #e5e3df;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Keep tiles bright and clear */
+.leaflet-tile-container {
+  filter: brightness(1) contrast(1);
+}
+
+/* Very subtle cyan tint for retro feel */
+.leaflet-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 255, 255, 0.03);
+  pointer-events: none;
+  z-index: 400;
+  mix-blend-mode: soft-light;
+}
+
+/* Hide default Leaflet controls */
+.leaflet-control-zoom,
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Traffic segment glow effects */
+.traffic-segment {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Route animations */
+.route-safe {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+  animation: pulse-safe 2s ease-in-out infinite;
+}
+
+.route-danger {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+@keyframes pulse-safe {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/* Lumen Field marker styling */
+.lumen-field-marker {
+  width: 16px;
+  height: 16px;
+  background: #00ffff;
+  border-radius: 50%;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.8);
+  animation: ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ring-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* Crosshair cursor for interactive elements */
+.leaflet-interactive {
+  cursor: crosshair;
+}
+
+/* Retro popup styling */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgba(10, 10, 10, 0.95) !important;
+  border: 2px solid #00ffff !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+}
+
+.leaflet-popup-content {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  color: #00ffff;
+  margin: 8px;
+}
+
+.leaflet-popup-tip {
+  border: 2px solid #00ffff !important;
+}
+
+/* Pane z-index hierarchy for proper layering */
+.leaflet-pane {
+  z-index: auto;
+}
+
+.leaflet-tile-pane {
+  z-index: 200;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+
+.leaflet-marker-pane {
+  z-index: 600;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
+}
