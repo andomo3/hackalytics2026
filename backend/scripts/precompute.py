@@ -18,10 +18,10 @@ from pathlib import Path
 # Ensure the backend package is importable when run via ``python -m scripts.precompute``
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import delete  # noqa: E402
+from sqlalchemy import delete, select  # noqa: E402
 
-from app.ai.orchestrator import EgressContext, build_routing_decision  # noqa: E402
-from app.db.models import Predictions, RoutingDecisions  # noqa: E402
+from app.ai.orchestrator import EgressContext, build_routing_decision_async  # noqa: E402
+from app.db.models import Predictions, RoutingDecisions, TransitCache  # noqa: E402
 from app.db.session import AsyncSessionLocal, init_db  # noqa: E402
 from app.etl.nfl_data import load_nfl_game_states  # noqa: E402
 from app.etl.scenarios import SCENARIOS  # noqa: E402
@@ -70,6 +70,21 @@ async def precompute_all() -> None:
             pred_rows: list[Predictions] = []
             route_rows: list[RoutingDecisions] = []
 
+            # Load transit data for this scenario
+            transit_result = await session.execute(
+                select(TransitCache).where(TransitCache.scenario_id == scenario_id)
+            )
+            transit_rows = transit_result.scalars().all()
+            transit_by_minute: dict[int, dict[str, dict[str, int]]] = {}
+            for row in transit_rows:
+                if row.minute not in transit_by_minute:
+                    transit_by_minute[row.minute] = {
+                        "transit_load": {},
+                        "pedestrian_volume": {},
+                    }
+                transit_by_minute[row.minute]["transit_load"][row.location_id] = row.transit_load
+                transit_by_minute[row.minute]["pedestrian_volume"][row.location_id] = row.pedestrian_volume
+
             for minute in range(1440):
                 game_state = scenario_states.get(minute)
 
@@ -84,14 +99,19 @@ async def precompute_all() -> None:
                 ))
 
                 if threat >= ROUTING_THREAT_THRESHOLD:
+                    transit_data = transit_by_minute.get(
+                        minute,
+                        {"transit_load": {}, "pedestrian_volume": {}},
+                    )
                     ctx = EgressContext(
                         egress_threat_score=threat,
                         estimated_crowd_volume=crowd,
                         game_state=game_state,
-                        transit_loads={},
+                        transit_loads=transit_data["transit_load"],
+                        pedestrian_volume=transit_data["pedestrian_volume"],
                         available_routes=available_routes,
                     )
-                    routing = build_routing_decision(ctx)
+                    routing = await build_routing_decision_async(ctx)
                     route_rows.append(RoutingDecisions(
                         scenario_id=scenario_id,
                         minute=minute,
