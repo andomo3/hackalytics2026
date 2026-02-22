@@ -10,6 +10,5 @@ joblib
 pydantic-ai[openai]
 sqlalchemy[asyncio]
 aiosqlite
-sodapy
 httpx
 python-dotenv

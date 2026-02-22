@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { GameState } from './mockData';
+import { GameState, Hotspot } from './types';
 
 type AlertHistoryEntry = {
   minute: number;
@@ -13,6 +13,13 @@ interface AlertPanelProps {
   alertMessage: string;
   threatScore: number;
   timeLabel: string;
+<<<<<<< HEAD
+  /** Top corridors by traffic saturation (for Phase 4b) */
+  corridorHotspots?: Hotspot[];
+}
+
+export function AlertPanel({ gameState, alertMessage, threatScore, timeLabel, corridorHotspots = [] }: AlertPanelProps) {
+=======
   severity?: number;
   crowdVolume?: number;
   alertHistory?: AlertHistoryEntry[];
@@ -35,6 +42,7 @@ export function AlertPanel({
   crowdVolume,
   alertHistory = [],
 }: AlertPanelProps) {
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
   const getThreatLevel = () => {
     if (threatScore >= 0.8) return { label: 'CRITICAL', color: 'text-red-500', bg: 'bg-red-500' };
     if (threatScore >= 0.6) return { label: 'HIGH', color: 'text-amber-400', bg: 'bg-amber-400' };
@@ -142,6 +150,29 @@ export function AlertPanel({
             />
           </div>
         </div>
+        
+        {/* Corridor saturation (traffic-based metrics) */}
+        {corridorHotspots.length > 0 && (
+          <div className="border border-slate-700 p-1.5 space-y-1">
+            <div className="text-[7px] text-cyan-400 border-b border-slate-700 pb-0.5">
+              CORRIDOR SATURATION
+            </div>
+            <div className="space-y-0.5">
+              {corridorHotspots.slice(0, 3).map((h) => (
+                <div key={h.id} className="flex justify-between text-[7px]">
+                  <span className="text-slate-400 truncate max-w-[90px]">{h.name}</span>
+                  <span className={
+                    h.density_pct > 90 ? 'text-red-500 font-bold' :
+                    h.density_pct > 70 ? 'text-amber-400' :
+                    'text-emerald-400'
+                  }>
+                    {h.density_pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         {/* AI Reasoning Log */}
         <div className="border border-slate-700 p-1.5 space-y-1">

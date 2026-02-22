@@ -5,6 +5,22 @@ import { TimelineSlider } from './TimelineSlider';
 import { TacticalMap } from './TacticalMap';
 import { AlertPanel } from './AlertPanel';
 import { HotspotModal } from './HotspotModal';
+<<<<<<< HEAD
+import type { Hotspot } from './types';
+import { useScenarioData } from '../hooks/useScenarioData';
+
+export function SafeTransitCommand() {
+  const { scenarios, loading, error, source } = useScenarioData();
+  const [selectedScenario, setSelectedScenario] = useState(0);
+  const [currentMinute, setCurrentMinute] = useState(1125);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
+  
+  const currentScenario = scenarios[selectedScenario];
+  const currentData = currentScenario?.timeline?.[currentMinute];
+  
+  // Auto-play functionality
+=======
 import { Hotspot } from './mockData';
 import { useFetchScenario } from '../hooks/useFetchScenario';
 
@@ -40,6 +56,7 @@ export function SafeTransitCommand() {
     return index >= 0 ? index : 0;
   }, [scenarioOptions, selectedScenarioId]);
 
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
   useEffect(() => {
     if (scenarioOptions.length === 0) {
       return;
@@ -64,12 +81,18 @@ export function SafeTransitCommand() {
   }, [currentMinute, simulationData.timeline.length]);
 
   const handleScenarioChange = (index: number) => {
+<<<<<<< HEAD
+    setSelectedScenario(index);
+    const keyMin = scenarios[index]?.scenario_metadata?.key_minute;
+    setCurrentMinute(keyMin ?? 1260);
+=======
     const scenario = scenarioOptions[index];
     if (!scenario) {
       return;
     }
     setSelectedScenarioId(scenario.id);
     setCurrentMinute(getScenarioStartMinute(scenario.id, scenario.risk_level));
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
   };
 
   const timeline = simulationData.timeline;
@@ -105,6 +128,26 @@ export function SafeTransitCommand() {
     );
   }
   
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+        <div className="font-mono text-cyan-400 text-sm animate-pulse">
+          LOADING SCENARIO DATA...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !currentData) {
+    return (
+      <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+        <div className="font-mono text-red-500 text-sm">
+          {error ?? 'NO DATA AVAILABLE'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full bg-slate-950 relative overflow-hidden">
       {/* Main Content */}
@@ -116,12 +159,52 @@ export function SafeTransitCommand() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
+<<<<<<< HEAD
+          <div className="flex items-center justify-between">
+            <div className="font-mono">
+              <h1 className="text-sm font-bold text-cyan-400 tracking-wider">
+                SAFETRANSIT
+              </h1>
+              <p className="text-[8px] text-emerald-400">
+                AI CROWD PREVENTION // 2026 WC
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Play/Pause Button */}
+              <motion.button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className={`px-2 py-1 border font-mono text-[8px] ${
+                  isPlaying
+                    ? 'border-red-500 text-red-500 bg-red-500 bg-opacity-10'
+                    : 'border-emerald-400 text-emerald-400 bg-emerald-400 bg-opacity-10'
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </motion.button>
+              
+              {/* System Status */}
+              <div className="flex items-center gap-1 font-mono text-[8px]">
+                <motion.div
+                  className={`w-2 h-2 rounded-full ${source === 'api' ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <span className={source === 'api' ? 'text-emerald-400' : 'text-amber-400'}>
+                  {source === 'api' ? 'LIVE' : 'MOCK'}
+                </span>
+              </div>
+            </div>
+=======
           <h1 className="font-mono text-lg font-bold text-cyan-400 tracking-wider">
             SAFETRANSIT
           </h1>
           <div className="font-mono text-xs text-slate-400 mt-0.5">
             {isLoading ? 'Loading cache...' : `Data source: ${dataSource.toUpperCase()}`}
             {error ? ` | ${error}` : ''}
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
           </div>
         </motion.div>
         
@@ -179,9 +262,15 @@ export function SafeTransitCommand() {
               alertMessage={currentData.alert_message}
               threatScore={currentData.threat_score}
               timeLabel={currentData.time_label}
+<<<<<<< HEAD
+              corridorHotspots={[...currentData.hotspots]
+                .sort((a, b) => b.density_pct - a.density_pct)
+                .slice(0, 3)}
+=======
               severity={currentData.severity}
               crowdVolume={currentData.estimated_crowd_volume}
               alertHistory={alertHistory}
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
             />
           </motion.div>
         </div>

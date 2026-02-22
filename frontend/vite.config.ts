@@ -51,6 +51,25 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
+<<<<<<< HEAD
+  },
+  build: {
+    target: "esnext",
+    outDir: "build",
+  },
+  server: {
+    host: true,
+    port: 5173,
+    open: false,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
+});
+=======
     build: {
       target: 'esnext',
       outDir: 'build',
@@ -60,3 +79,4 @@
       open: false,
     },
   });
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
