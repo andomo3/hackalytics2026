@@ -103,11 +103,11 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Top Status Bar */}
-      <motion.div 
+      <motion.div
         className="fixed top-2 left-1/2 -translate-x-1/2 px-6 py-1.5 pointer-events-none z-40"
         style={{
           fontFamily: 'Departure Mono, monospace',
-          background: 'linear-gradient(90deg, transparent, rgba(0, 20, 20, 0.8), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(30, 41, 59, 0.8), transparent)',
           borderTop: '1px solid rgba(0, 255, 255, 0.3)',
           borderBottom: '1px solid rgba(0, 255, 255, 0.3)'
         }}
@@ -122,7 +122,7 @@ export function HUDFrame() {
           <span className="text-gray-500">|</span>
           <span className="text-cyan-300">{formatDate(currentTime)}</span>
           <span className="text-gray-500">|</span>
-          <motion.span 
+          <motion.span
             className="text-green-400"
             animate={{ opacity: [1, 0.5, 1] }}
             transition={{ duration: 1, repeat: Infinity }}
@@ -130,7 +130,7 @@ export function HUDFrame() {
             {formatTime(currentTime)}
           </motion.span>
           <span className="text-gray-500">|</span>
-          <motion.span 
+          <motion.span
             className="text-green-400"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -168,7 +168,7 @@ export function HUDFrame() {
       </motion.div>
 
       {/* Side indicators - Right */}
-      <motion.div 
+      <motion.div
         className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-none z-40"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -181,12 +181,12 @@ export function HUDFrame() {
             style={{
               boxShadow: '0 0 10px rgba(0, 255, 255, 0.6)'
             }}
-            animate={{ 
+            animate={{
               opacity: [0.3, 1, 0.3],
               height: ['20px', '32px', '20px']
             }}
-            transition={{ 
-              duration: 2, 
+            transition={{
+              duration: 2,
               repeat: Infinity,
               delay: i * 0.3
             }}

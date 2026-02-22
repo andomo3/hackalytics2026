@@ -39,20 +39,20 @@ export function SafeTransitCommand() {
   };
   
   return (
-    <div className="w-full h-full bg-slate-950 relative overflow-hidden">
+    <div className="w-full h-full bg-slate-800 relative overflow-hidden">
       {/* CRT Effect - Full screen background */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
-          background: 'radial-gradient(circle at center, rgba(0, 40, 40, 0.2), rgba(0, 0, 0, 0.8))',
+          background: 'radial-gradient(circle at center, rgba(0, 40, 40, 0.15), rgba(0, 0, 0, 0.4))',
         }}
       />
-      
-      {/* Vignette Effect */}
-      <div 
+
+      {/* Lighter Vignette Effect */}
+      <div
         className="absolute inset-0 pointer-events-none z-[1001]"
         style={{
-          boxShadow: 'inset 0 0 100px 50px rgba(0, 0, 0, 0.8)',
+          boxShadow: 'inset 0 0 100px 50px rgba(0, 0, 0, 0.3)',
         }}
       />
       
@@ -60,7 +60,7 @@ export function SafeTransitCommand() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <motion.div
-          className="border-b-2 border-cyan-400 bg-slate-950 bg-opacity-80 backdrop-blur-md px-3 py-2"
+          className="border-b-2 border-cyan-400 bg-slate-700 bg-opacity-80 backdrop-blur-md px-3 py-2"
           initial={{ y: -100 }}
           animate={{ y: 0 }}
           transition={{ type: 'spring', stiffness: 100 }}
@@ -74,7 +74,7 @@ export function SafeTransitCommand() {
                 AI CROWD PREVENTION // 2026 WC
               </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {/* Play/Pause Button */}
               <motion.button
@@ -89,7 +89,7 @@ export function SafeTransitCommand() {
               >
                 {isPlaying ? '⏸' : '▶'}
               </motion.button>
-              
+
               {/* System Status */}
               <div className="flex items-center gap-1 font-mono text-[8px]">
                 <motion.div
@@ -102,10 +102,10 @@ export function SafeTransitCommand() {
             </div>
           </div>
         </motion.div>
-        
+
         {/* Scenario Selector */}
         <motion.div
-          className="px-3 py-2 bg-slate-950 bg-opacity-60"
+          className="px-3 py-2 bg-slate-700 bg-opacity-50"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -163,7 +163,7 @@ export function SafeTransitCommand() {
         
         {/* Timeline Slider - Fixed at bottom */}
         <motion.div
-          className="border-t-2 border-slate-800"
+          className="border-t-2 border-slate-600"
           initial={{ y: 100 }}
           animate={{ y: 0 }}
           transition={{ type: 'spring', stiffness: 100, delay: 0.5 }}
