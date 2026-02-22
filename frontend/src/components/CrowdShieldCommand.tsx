@@ -115,9 +115,19 @@ export function CrowdShieldCommand() {
               onSelectScenario={handleScenarioChange}
             />
           </div>
-          <div className="font-mono text-xs text-slate-500">
-            {isLoading ? 'Loading...' : `SRC: ${dataSource.toUpperCase()}`}
-            {error ? ` | ${error}` : ''}
+          <div className="font-mono text-xs text-slate-500 flex items-center gap-3">
+            <span>
+              {isLoading ? 'Loading...' : `SRC: ${dataSource.toUpperCase()}`}
+              {error ? ` | ${error}` : ''}
+            </span>
+            {error && (
+              <button
+                onClick={refresh}
+                className="text-amber-400 border border-amber-400 px-2 py-0.5 hover:bg-amber-400 hover:text-black transition-colors"
+              >
+                RETRY API
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -186,15 +196,7 @@ export function CrowdShieldCommand() {
         />
       )}
 
-      {/* Retry button on error */}
-      {error && (
-        <button
-          onClick={refresh}
-          className="absolute bottom-3 right-3 z-[1200] text-xs font-mono text-amber-400 border border-amber-400 px-2 py-1 hover:bg-amber-400 hover:text-black transition-colors"
-        >
-          Retry API
-        </button>
-      )}
+
     </div>
   );
 }

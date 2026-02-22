@@ -268,12 +268,14 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       className="relative w-full overflow-y-auto overflow-x-hidden"
       style={{ background: '#020617', height: '100%' }}
     >
+      {/* Dot grid spans the entire page */}
+      <DotGrid />
+
       {/* ===== HERO SECTION ===== */}
       <div
         className="relative w-full flex flex-col items-center justify-center"
         style={{ minHeight: '100vh' }}
       >
-        <DotGrid />
 
         {/* Radial glow */}
         <div
@@ -353,8 +355,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       {/* ===== ABOUT -- HORIZONTAL SCROLLABLE TIMELINE ===== */}
       <div
         ref={aboutRef}
-        className="relative w-full"
-        style={{ background: '#020617' }}
+        className="relative z-10 w-full"
       >
         {/* Section header */}
         <div className="flex flex-col items-center pt-24 pb-12">
