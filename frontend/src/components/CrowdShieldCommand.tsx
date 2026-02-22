@@ -127,13 +127,6 @@ export function CrowdShieldCommand() {
             />
           </div>
           <div className="font-mono text-xs text-slate-500 flex items-center gap-3">
-            <span>
-              {isLoading || demoLoading
-                ? 'Loading...'
-                : `SRC: ${(useStaticDemoTimeline && demoData ? 'DEMO_JSON' : dataSource.toUpperCase())}`}
-              {error ? ` | ${error}` : ''}
-              {demoError ? ` | ${demoError}` : ''}
-            </span>
             <button
               onClick={() => setCurrentMinute(1125)}
               className="text-cyan-400 border border-cyan-500 px-2 py-0.5 hover:bg-cyan-500 hover:text-black transition-colors"

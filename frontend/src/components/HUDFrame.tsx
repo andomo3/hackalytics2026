@@ -1,17 +1,9 @@
-import { useEffect, useState } from 'react';
-
 /**
  * HUDFrame -- fixed corner-bracket overlay that frames the command center
  * in a sci-fi tactical HUD style. All pointer-events-none so it never
  * interferes with interaction.
  */
 export function HUDFrame() {
-  const [timestamp, setTimestamp] = useState(getTimestamp());
-
-  useEffect(() => {
-    const interval = setInterval(() => setTimestamp(getTimestamp()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const bracketSize = 48;
   const strokeColor = 'rgba(34, 211, 238, 0.35)';
@@ -119,40 +111,7 @@ export function HUDFrame() {
         CROWDSHIELD v1.0
       </div>
 
-      {/* Bottom-left: system clock */}
-      <div
-        className="absolute font-mono"
-        style={{
-          bottom: '14px',
-          left: '60px',
-          fontSize: '9px',
-          letterSpacing: '0.1em',
-          color: 'rgba(34, 211, 238, 0.25)',
-        }}
-      >
-        SYS {timestamp}
-      </div>
 
-      {/* Bottom-right: connection status */}
-      <div
-        className="absolute font-mono flex items-center gap-1"
-        style={{
-          bottom: '14px',
-          right: '60px',
-          fontSize: '9px',
-          color: 'rgba(52, 211, 153, 0.35)',
-        }}
-      >
-        <div
-          style={{
-            width: '5px',
-            height: '5px',
-            borderRadius: '50%',
-            background: 'rgba(52, 211, 153, 0.6)',
-          }}
-        />
-        LINK OK
-      </div>
 
       {/* Top-left: Hacklytics badge */}
       <div
@@ -171,7 +130,4 @@ export function HUDFrame() {
   );
 }
 
-function getTimestamp(): string {
-  const now = new Date();
-  return now.toLocaleTimeString('en-US', { hour12: false });
-}
+
