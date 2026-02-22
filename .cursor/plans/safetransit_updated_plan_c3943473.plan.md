@@ -4,18 +4,18 @@ overview: Updated execution plan for SafeTransit, pivoting from Socrata pedestri
 todos:
   - id: traffic-etl
     content: "Build seattle_data.py: load both traffic CSVs, filter to stadium-area locations, generate synthetic 1440-minute timelines per scenario with game-day multipliers, write to transit_cache table"
-    status: pending
+    status: completed
   - id: nfl-etl
     content: "Build nfl_data.py: load Kaggle NFL play-by-play CSVs, select 3 representative games, build minute-by-minute game state timelines"
-    status: pending
+    status: completed
   - id: precompute-script
     content: "Create backend/scripts/precompute.py: orchestrate full ETL -> ML -> AI pipeline, populate all 3 DB tables for all 3 scenarios"
-    status: pending
+    status: completed
   - id: xgboost-training
     content: "Implement ml/train.py: engineer features from traffic + game state, train XGBoost model with synthetic egress labels, save as .joblib. Update predictor.py to use trained model"
     status: pending
   - id: pydantic-ai-agent
-    content: "Upgrade ai/orchestrator.py: replace rule-based logic with Pydantic AI agent (OpenAI GPT-4o), generate typed RoutingPayload from game context and traffic data"
+    content: "Upgrade ai/orchestrator.py: replace rule-based logic with Pydantic AI agent (OpenAI GPT-4o) that reasons over per-corridor traffic loads vs baselines, game state, and threat score to select optimal safe/danger routes and generate contextual alert messages"
     status: pending
   - id: geojson-routes
     content: Expand routes.json from 2 to 5-6 routes covering all major egress corridors around Lumen Field
@@ -42,15 +42,18 @@ This eliminates the need for `sodapy`, the `SOCRATA_APP_TOKEN` env var, and any 
 
 ## Current State (What's Already Built)
 
-**Backend** — solid scaffold:
+**Backend — scaffold + data pipeline complete:**
 
 - FastAPI app with CORS, health check, lifespan ([backend/main.py](backend/main.py))
 - Database models: `TransitCache`, `Predictions`, `RoutingDecisions` ([backend/app/db/models.py](backend/app/db/models.py))
 - Async SQLite session ([backend/app/db/session.py](backend/app/db/session.py))
 - API routes: `GET /scenarios`, `GET /scenarios/{id}/timeseries` ([backend/app/api/routes.py](backend/app/api/routes.py))
 - 3 scenario definitions ([backend/app/etl/scenarios.py](backend/app/etl/scenarios.py))
-- Heuristic predictor ([backend/app/ml/predictor.py](backend/app/ml/predictor.py))
-- Rule-based routing ([backend/app/ai/orchestrator.py](backend/app/ai/orchestrator.py))
+- **DONE** Traffic ETL ([backend/app/etl/seattle_data.py](backend/app/etl/seattle_data.py)) — 6 stadium-area corridors, synthetic game-day timelines, 25,920 rows in `transit_cache`
+- **DONE** NFL data loader ([backend/app/etl/nfl_data.py](backend/app/etl/nfl_data.py)) — 3 real Seahawks games (SEA 24-13 DAL, SEA 40-38 HOU, SEA 7-42 LA) mapped to 1,440-minute timelines
+- **DONE** Precompute pipeline ([backend/scripts/precompute.py](backend/scripts/precompute.py)) — runs ETL + ML + AI in ~10 seconds, populates all 3 DB tables (25,920 transit + 4,320 predictions + 337 routing decisions)
+- Heuristic predictor ([backend/app/ml/predictor.py](backend/app/ml/predictor.py)) — working, to be upgraded to XGBoost
+- Rule-based routing ([backend/app/ai/orchestrator.py](backend/app/ai/orchestrator.py)) — working, to be upgraded to Pydantic AI + OpenAI
 - 2 GeoJSON routes ([backend/data/geojson_routes/routes.json](backend/data/geojson_routes/routes.json))
 
 **Frontend** — fully built with mock data:
@@ -59,9 +62,9 @@ This eliminates the need for `sodapy`, the `SOCRATA_APP_TOKEN` env var, and any 
 - Canvas-based tactical map, timeline slider, scenario selector, alert panel
 - All driven by `mockData.ts` — not connected to backend API
 
-**Stubs/placeholders:**
+**Remaining stubs:**
 
-- `seattle_data.py`, `nfl_data.py`, `train.py` — all empty
+- `ml/train.py` — XGBoost training (empty placeholder)
 
 ## Updated Plan
 
@@ -84,7 +87,7 @@ Replace the Socrata API ingestion with local CSV loading:
 
 #### 1b. NFL Data Loader — `etl/nfl_data.py`
 
-- Load the NFL play-by-play CSVs from `Kaggle Archive/`
+- Load the NFL play-by-play CSVs from `mainData/`
 - Select 3 games matching the scenario profiles:
   - Normal exit, close high-attendance game, blowout
 - Build minute-by-minute game state: quarter, clock, score differential, play descriptions
@@ -119,13 +122,29 @@ Update to incorporate traffic data as features alongside game state:
 - Save model as `.joblib`
 - Upgrade `predictor.py` to load trained model instead of the heuristic
 
-### Phase 3: AI Routing (Pydantic AI)
+### Phase 3: AI Routing (Pydantic AI + OpenAI)
 
 #### 3a. Orchestrator — `ai/orchestrator.py`
 
-- Replace rule-based logic with Pydantic AI agent using OpenAI GPT-4o
-- The agent receives: threat score, crowd volume, game state, current traffic loads per corridor, available GeoJSON routes
-- The agent outputs: `RoutingPayload` (danger routes, safe routes, alert message, severity)
+Replace the current rule-based logic with a Pydantic AI agent (OpenAI GPT-4o / GPT-4o-mini) that **reasons over real-time corridor conditions** to recommend optimal egress routes.
+
+**What the agent receives** (per minute where threat >= 0.5):
+
+- **Per-corridor traffic loads with baselines** — e.g., `stadium_1st_ave: current=235 ped, baseline=17 ped (13.8x normal)` vs `king_street: current=24 ped, baseline=14 ped (1.7x normal)`. The agent compares current load to each corridor's AWDT baseline to identify which are overloaded and which have capacity.
+- **Game state** — quarter, clock, score differential, last play description. Gives the agent context on *why* people are leaving (blowout, game end, halftime).
+- **Threat score + crowd volume** — from the ML predictor. Tells the agent the overall severity level.
+- **Available GeoJSON routes** — the pre-traced paths the agent selects from (it never invents coordinates).
+
+**What the agent decides:**
+
+- Which corridors are **dangerous** (overloaded relative to their baseline) and selects matching routes as `danger_routes`
+- Which corridors are **safe alternatives** (still near baseline capacity) and selects matching routes as `safe_routes`
+- A **contextual alert message** explaining the situation, e.g., *"Stadium Station corridor at 14x normal capacity due to Q3 blowout exodus. Redirect to King Street Station via S King St (1.7x baseline). Avoid Occidental Ave pedestrian corridor."*
+- A **severity level** (1-5) that varies dynamically based on how many corridors are overloaded and by how much
+
+**Structured output via Pydantic AI:** The agent must return a typed `RoutingPayload` — it cannot produce unstructured text. This guarantees the frontend always gets valid danger/safe route arrays and a severity integer.
+
+**Cost:** Only called for minutes where threat >= 0.5 (~100-130 per scenario, ~330 total). At ~$0.01/call with GPT-4o-mini, total cost is ~$3-4 for all scenarios. Runs once during precompute, never at demo time.
 
 #### 3b. Additional GeoJSON Routes
 
@@ -137,6 +156,8 @@ Expand from 2 to 5-6 routes in `routes.json`:
 - Occidental Ave pedestrian corridor
 - Edgar Martinez Dr to Pioneer Square
 - S Royal Brougham Way eastbound
+
+Each route should include a `corridor_id` field matching the `location_id` keys in `transit_cache` (e.g., `stadium_1st_ave`, `king_street`) so the agent can cross-reference traffic loads with routes.
 
 ### Phase 4: Frontend Integration
 

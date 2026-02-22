@@ -26,6 +26,9 @@ dist/
 *.egg-info/
 .eggs/
 
+# Analysis notebooks (large/outputs)
+dataset_analysis_request_20260221_160053.ipynb
+
 # Node / frontend
 node_modules/
 frontend/dist/
@@ -55,7 +58,7 @@ backend/data/nfl/*.csv
 backend/data/nfl_csvs/*.csv
 *.joblib
 *.pkl
-Kaggle Archive/
+mainData/
 
 # IDE / OS files
 .vscode/

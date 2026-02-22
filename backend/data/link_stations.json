@@ -1,0 +1,26 @@
+[
+  {
+    "id": "C09",
+    "name": "Int'l Dist/Chinatown",
+    "lat": 47.598355,
+    "lon": -122.327992
+  },
+  {
+    "id": "SS01",
+    "name": "King Street Station",
+    "lat": 47.597702,
+    "lon": -122.329456
+  },
+  {
+    "id": "C15",
+    "name": "SODO",
+    "lat": 47.581074,
+    "lon": -122.32739
+  },
+  {
+    "id": "C13",
+    "name": "Stadium",
+    "lat": 47.591108,
+    "lon": -122.327172
+  }
+]
