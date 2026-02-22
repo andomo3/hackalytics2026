@@ -19,6 +19,116 @@ router = APIRouter(tags=["scenarios"])
 _DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 _LINK_STATIONS_JSON = _DATA_DIR / "link_stations.json"
 _STADIUM_DEPARTURES_JSON = _DATA_DIR / "stadium_departures.json"
+CRITICAL_CAPACITY_THRESHOLD = 133
+EMERGENCY_CORRIDOR = [
+    [47.6044, -122.3238],
+    [47.6019, -122.3258],
+    [47.5994, -122.3282],
+    [47.5972, -122.3299],
+    [47.5952, -122.3316],
+]
+
+
+def minute_label(minute: int) -> str:
+    hour = minute // 60
+    mins = minute % 60
+    return f"{hour:02d}:{mins:02d}"
+
+
+def _parse_routes(routes: Any) -> list[list[list[float]]]:
+    if not routes:
+        return []
+    if isinstance(routes, str):
+        try:
+            routes = json.loads(routes)
+        except json.JSONDecodeError:
+            return []
+    if not isinstance(routes, list):
+        return []
+    normalized: list[list[list[float]]] = []
+    for route in routes:
+        path = route.get("path") if isinstance(route, dict) else route
+        if not isinstance(path, list):
+            continue
+        line: list[list[float]] = []
+        for point in path:
+            if (
+                isinstance(point, list)
+                and len(point) >= 2
+                and isinstance(point[0], (int, float))
+                and isinstance(point[1], (int, float))
+            ):
+                line.append([float(point[0]), float(point[1])])
+        if len(line) >= 2:
+            normalized.append(line)
+    return normalized
+
+
+def generate_synthetic_timeline(scenario_id: str, scenario: dict[str, Any]) -> list[dict[str, Any]]:
+    timeline: list[dict[str, Any]] = []
+    is_blowout = "blowout" in scenario_id.lower()
+    for minute in range(1440):
+        label = minute_label(minute)
+        threat = 0.12
+        game_state: dict[str, Any] | None = None
+        if 1080 <= minute < 1260:
+            game_state = {"home": 0, "away": 0, "clock": "15:00", "qtr": 1, "quarter": 1}
+            if is_blowout and minute >= 1125:
+                game_state = {"home": 14, "away": 42, "clock": "6:12", "qtr": 3, "quarter": 3}
+                threat = 0.95
+            elif minute >= 1200:
+                threat = 0.62
+            else:
+                threat = 0.35
+
+        surge = int(25 + threat * 170)
+        lock_down = surge >= int(CRITICAL_CAPACITY_THRESHOLD * 1.1) or threat >= 0.9
+        transit_status = {
+            "stadium_station": "LOCKED_DOWN" if lock_down else "OPEN",
+            "king_st": "OPEN",
+        }
+        emergency_corridors = [EMERGENCY_CORRIDOR] if lock_down else []
+
+        timeline.append(
+            {
+                "minute": minute,
+                "time_label": label,
+                "timestamp_label": label,
+                "transit_load": {},
+                "pedestrian_volume": {},
+                "egress_threat_score": round(threat, 3),
+                "threat_score": round(threat, 3),
+                "estimated_crowd_volume": int(threat * 68000),
+                "predicted_surge_velocity": surge,
+                "critical_capacity_threshold": CRITICAL_CAPACITY_THRESHOLD,
+                "platform_utilization_pct": int(round((surge / CRITICAL_CAPACITY_THRESHOLD) * 100)),
+                "game_state": game_state,
+                "danger_routes": [],
+                "safe_routes": [],
+                "emergency_corridors": emergency_corridors,
+                "transit_status": transit_status,
+                "ai_log_lines": (
+                    [
+                        "THREAT EXCEEDS PLATFORM LIMIT.",
+                        "EXECUTING STATION LOCKDOWN.",
+                        "MAPPING EMS CORRIDORS.",
+                    ]
+                    if lock_down
+                    else [
+                        "MONITORING CORRIDOR FLOW.",
+                        "CAPACITY WITHIN SAFE LIMITS.",
+                        "NO INTERVENTION REQUIRED.",
+                    ]
+                ),
+                "alert_message": (
+                    "CRITICAL: Surge velocity exceeds platform limit."
+                    if lock_down
+                    else "All systems normal."
+                ),
+                "severity": 5 if lock_down else 1,
+            }
+        )
+    return timeline
 
 
 @router.get("/scenarios")
@@ -88,22 +198,49 @@ async def get_scenario_timeseries(
         prediction = prediction_by_minute.get(minute)
         routing = routing_by_minute.get(minute)
         transit_data = transit_by_minute[minute]
+        threat_score = prediction.egress_threat_score if prediction else 0.0
+        estimated_crowd = prediction.estimated_crowd_volume if prediction else 0
+        predicted_surge_velocity = int(12 + (estimated_crowd / 68_000) * 110 + threat_score * 95)
+        lock_down = predicted_surge_velocity >= int(CRITICAL_CAPACITY_THRESHOLD * 1.1) or threat_score >= 0.9
+        transit_status = {
+            "stadium_station": "LOCKED_DOWN" if lock_down else "OPEN",
+            "king_st": "OPEN",
+        }
+        emergency_corridors = [EMERGENCY_CORRIDOR] if lock_down else []
 
         timeline.append(
             {
                 "minute": minute,
                 "time_label": minute_label(minute),
+                "timestamp_label": minute_label(minute),
                 "transit_load": transit_data["transit_load"],
                 "pedestrian_volume": transit_data["pedestrian_volume"],
-                "egress_threat_score": (
-                    prediction.egress_threat_score if prediction else 0.0
-                ),
-                "estimated_crowd_volume": (
-                    prediction.estimated_crowd_volume if prediction else 0
+                "egress_threat_score": threat_score,
+                "threat_score": threat_score,
+                "estimated_crowd_volume": estimated_crowd,
+                "predicted_surge_velocity": predicted_surge_velocity,
+                "critical_capacity_threshold": CRITICAL_CAPACITY_THRESHOLD,
+                "platform_utilization_pct": int(
+                    round((predicted_surge_velocity / max(CRITICAL_CAPACITY_THRESHOLD, 1)) * 100)
                 ),
                 "game_state": prediction.game_state if prediction else None,
-                "danger_routes": routing.danger_routes if routing else None,
-                "safe_routes": routing.safe_routes if routing else None,
+                "danger_routes": _parse_routes(routing.danger_routes) if routing else [],
+                "safe_routes": _parse_routes(routing.safe_routes) if routing else [],
+                "emergency_corridors": emergency_corridors,
+                "transit_status": transit_status,
+                "ai_log_lines": (
+                    [
+                        "THREAT EXCEEDS PLATFORM LIMIT.",
+                        "EXECUTING STATION LOCKDOWN.",
+                        "MAPPING EMS CORRIDORS.",
+                    ]
+                    if lock_down
+                    else [
+                        "MONITORING CORRIDOR FLOW.",
+                        "CAPACITY WITHIN SAFE LIMITS.",
+                        "NO INTERVENTION REQUIRED.",
+                    ]
+                ),
                 "alert_message": routing.alert_message if routing else None,
                 "severity": routing.severity if routing else None,
             }

@@ -22,6 +22,18 @@ from app.etl.scenarios import SCENARIOS
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+
+def _resolve_data_file(filename: str) -> Path:
+    candidates = [
+        PROJECT_ROOT / "mainData" / filename,
+        PROJECT_ROOT / "exports" / filename,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    # Default to legacy location for clearer error messages downstream.
+    return candidates[0]
+
 # --------------------------------------------------------------------------- 
 # Stadium-area corridors
 # AWDT (Average Weekday Daily Traffic) sourced from 2022 Traffic Flow Counts.
@@ -86,7 +98,7 @@ def _smooth(t: float) -> float:
 def _load_hourly_profile() -> np.ndarray:
     """Return a 1 440-element array where ``profile[m]`` is the fraction of
     daily traffic occurring at minute *m*, derived from the 15-min bin CSV."""
-    csv_path = PROJECT_ROOT / "mainData" / "seattle_traffic_counts_2018plus.csv"
+    csv_path = _resolve_data_file("seattle_traffic_counts_2018plus.csv")
     df = pd.read_csv(
         csv_path,
         usecols=["current_count", "count_hour", "count_minute"],
@@ -210,7 +222,7 @@ async def ingest_seattle_traffic_data() -> None:
             rows = _build_scenario_rows(scenario_id, profile)
             session.add_all(rows)
             await session.commit()
-            print(f"    → {len(rows):,} rows inserted")
+            print(f"    -> {len(rows):,} rows inserted")
 
     print("Transit cache populated successfully.")
 

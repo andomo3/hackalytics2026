@@ -324,7 +324,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               <div style={{ color: '#10b981' }}>{'>'} xgboost model loaded -- 94.2% accuracy</div>
               <div style={{ color: '#10b981' }}>{'>'} pydantic ai routing agent online</div>
               <div style={{ color: '#22d3ee' }}>{'>'} 40 intersection sensors calibrated</div>
-              <div style={{ color: '#22d3ee' }}>{'>'} leaflet tactical map initialized</div>
+              <div style={{ color: '#22d3ee' }}>{'>'} canvas tactical map initialized</div>
               <div style={{ color: '#10b981' }}>{'>'} all systems nominal. ready for simulation.</div>
               <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: '#22d3ee' }}>$</span>
@@ -400,7 +400,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             <div className="font-mono text-xs font-bold tracking-wider" style={{ color: '#22d3ee', marginBottom: '16px', textAlign: 'left' }}>tech.stack</div>
             {[
               { name: 'React 18 + Vite', desc: 'Frontend runtime' },
-              { name: 'Leaflet.js', desc: 'Dark tactical map' },
+              { name: 'HTML5 Canvas', desc: 'Dark tactical map' },
               { name: 'Framer Motion', desc: 'Fluid transitions' },
               { name: 'XGBoost', desc: 'Crowd density prediction' },
               { name: 'Pydantic AI', desc: 'Routing agent' },

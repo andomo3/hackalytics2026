@@ -1,82 +1,65 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'motion/react';
-import { MapContainer, TileLayer, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Hotspot, Intersection } from './mockData';
+import { motion, AnimatePresence } from 'motion/react';
+import type { Hotspot, Intersection, TransitStatus } from './types';
 
-// Lumen Field center coordinates
-const LUMEN_FIELD: [number, number] = [47.5952, -122.3316];
-const DEFAULT_ZOOM = 15;
+/**
+ * CrowdShield tactical map renderer.
+ *
+ * Architecture:
+ * - Canvas paints the Seattle basemap and tactical lines for fast timeline scrubbing.
+ * - Absolute HTML overlays render station state and interactive hotspot elements.
+ * - A fixed stadium-district bounding box maps lat/lng into local pixel coordinates.
+ */
 
-interface TacticalMapProps {
-  dangerRoutes: number[][][];
-  safeRoutes: number[][][];
-  blurbs: Array<{ lat: number; lng: number; text: string }>;
-  hotspots: Hotspot[];
-  intersections: Intersection[];
-  onHotspotClick: (hotspot: Hotspot) => void;
+// ============================================================
+//  BOUNDING BOX – Seattle Stadium District
+//  Covers roughly Lumen Field to Harborview
+// ============================================================
+const BOUNDS = {
+  latMin: 47.5830,
+  latMax: 47.6060,
+  lngMin: -122.3420,
+  lngMax: -122.3140,
+};
+
+const LUMEN_FIELD = { lat: 47.5952, lng: -122.3316 };
+
+// Known transit hubs
+const TRANSIT_HUBS: Array<{
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  statusKey: string;
+}> = [
+  { id: 'stadium_station', label: 'STADIUM STN', lat: 47.5980, lng: -122.3300, statusKey: 'stadium_station' },
+  { id: 'king_st', label: 'KING ST STN', lat: 47.5990, lng: -122.3280, statusKey: 'king_st' },
+];
+
+// ============================================================
+//  COORDINATE MATH
+// ============================================================
+
+interface Dims { w: number; h: number }
+
+/** Convert geographic coordinates into local canvas pixel space. */
+function mapLatLngToPixels(lat: number, lng: number, dims: Dims): { x: number; y: number } {
+  const x = ((lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)) * dims.w;
+  // Invert Y: higher latitude = higher on screen = lower y
+  const y = (1 - (lat - BOUNDS.latMin) / (BOUNDS.latMax - BOUNDS.latMin)) * dims.h;
+  return { x, y };
 }
 
-/** Tracks current zoom level for child components */
-function ZoomTracker({ onZoomChange }: { onZoomChange: (z: number) => void }) {
-  useMapEvents({
-    zoomend: (e) => onZoomChange(e.target.getZoom()),
-    load: (e) => onZoomChange(e.target.getZoom()),
-  });
-  return null;
-}
-
-/** Keeps the map view in sync when scenario/time changes routes */
-function MapUpdater({ routes }: { routes: number[][][] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.invalidateSize();
-  }, [map, routes]);
-  return null;
-}
-
-/** Stadium marker rendered as a Leaflet DOM overlay */
-function StadiumMarker() {
-  const map = useMap();
-  useEffect(() => {
-    const marker = L.marker(LUMEN_FIELD, {
-      icon: L.divIcon({
-        className: '',
-        html: `
-          <div style="position:relative;width:28px;height:28px;">
-            <div class="stadium-marker" style="
-              position:absolute;top:50%;left:50%;
-              transform:translate(-50%,-50%);
-              width:14px;height:14px;border-radius:50%;
-              background:rgba(0,255,255,0.9);border:2px solid #00ffff;
-            "></div>
-            <div class="stadium-ring" style="
-              position:absolute;top:50%;left:50%;
-              width:28px;height:28px;border-radius:50%;
-              border:2px solid rgba(0,255,255,0.5);pointer-events:none;
-            "></div>
-          </div>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      }),
-      interactive: false,
-    });
-    marker.addTo(map);
-    return () => { marker.remove(); };
-  }, [map]);
-  return null;
-}
-
-// -------- Intersection heat helpers --------
+// ============================================================
+//  HEAT / COLOR HELPERS
+// ============================================================
 
 function getHeatColor(heat: number): string {
-  if (heat >= 85) return '#ef4444'; // red -- critical
-  if (heat >= 65) return '#f97316'; // orange -- high
-  if (heat >= 40) return '#eab308'; // yellow -- moderate
-  if (heat >= 15) return '#22d3ee'; // cyan -- low activity
-  return '#334155'; // slate -- minimal
+  if (heat >= 85) return '#ef4444';
+  if (heat >= 65) return '#f97316';
+  if (heat >= 40) return '#eab308';
+  if (heat >= 15) return '#22d3ee';
+  return '#334155';
 }
 
 function getHeatGlow(heat: number): string {
@@ -86,425 +69,639 @@ function getHeatGlow(heat: number): string {
   return 'rgba(34,211,238,0.3)';
 }
 
-function getHeatRadius(heat: number, zoom: number): number {
-  const baseSize = 6 + (heat / 100) * 18; // 6px to 24px
-  const zoomScale = Math.max(0.5, (zoom - 12) / 4); // scale down when zoomed out
-  return Math.round(baseSize * zoomScale);
-}
+// ============================================================
+//  PROPS
+// ============================================================
 
-/** Determines the minimum heat to be visible at a given zoom level */
-function getMinHeatForZoom(zoom: number): number {
-  if (zoom >= 16) return 0;   // show everything when zoomed way in
-  if (zoom >= 15) return 5;   // show almost all at default zoom
-  if (zoom >= 14) return 30;  // only moderate+ at zoom 14
-  if (zoom >= 13) return 55;  // only high+ at zoom 13
-  return 75;                  // only critical at zoom 12 and below
-}
-
-// -------- Clustering logic --------
-
-interface Cluster {
-  lat: number;
-  lng: number;
-  intersections: Intersection[];
-  avgHeat: number;
-  maxHeat: number;
-  totalCrowd: number;
-}
-
-/** Simple grid-based clustering: group nearby intersections based on zoom level */
-function clusterIntersections(intersections: Intersection[], zoom: number): Cluster[] {
-  // At high zoom, no clustering
-  if (zoom >= 15) {
-    return intersections.map((i) => ({
-      lat: i.lat,
-      lng: i.lng,
-      intersections: [i],
-      avgHeat: i.heat,
-      maxHeat: i.heat,
-      totalCrowd: i.crowd_estimate,
-    }));
-  }
-
-  // Grid cell size increases as zoom decreases
-  const cellSize = zoom >= 14 ? 0.003 : zoom >= 13 ? 0.006 : 0.01;
-
-  const grid: Record<string, Intersection[]> = {};
-  intersections.forEach((int) => {
-    const cellX = Math.floor(int.lat / cellSize);
-    const cellY = Math.floor(int.lng / cellSize);
-    const key = `${cellX}_${cellY}`;
-    if (!grid[key]) grid[key] = [];
-    grid[key].push(int);
-  });
-
-  return Object.values(grid).map((group) => {
-    const avgLat = group.reduce((s, i) => s + i.lat, 0) / group.length;
-    const avgLng = group.reduce((s, i) => s + i.lng, 0) / group.length;
-    const avgHeat = Math.round(group.reduce((s, i) => s + i.heat, 0) / group.length);
-    const maxHeat = Math.max(...group.map((i) => i.heat));
-    const totalCrowd = group.reduce((s, i) => s + i.crowd_estimate, 0);
-    return { lat: avgLat, lng: avgLng, intersections: group, avgHeat, maxHeat, totalCrowd };
-  });
-}
-
-/** Build the HTML for a retro-styled popup */
-function buildIntersectionPopup(int: Intersection): string {
-  const color = getHeatColor(int.heat);
-  const threatColors: Record<string, string> = {
-    LOW: '#22d3ee',
-    MODERATE: '#eab308',
-    HIGH: '#f97316',
-    CRITICAL: '#ef4444',
-  };
-  const tc = threatColors[int.threat_level] || '#22d3ee';
-
-  return `
-    <div class="intersection-popup">
-      <div style="font-size:11px;color:#94a3b8;letter-spacing:0.08em;margin-bottom:4px;">INTERSECTION</div>
-      <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:8px;line-height:1.3;">${int.name}</div>
-      <div style="display:flex;gap:12px;margin-bottom:8px;">
-        <div>
-          <div style="font-size:10px;color:#64748b;">HEAT</div>
-          <div style="font-size:18px;font-weight:700;color:${color};">${int.heat}%</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#64748b;">CROWD</div>
-          <div style="font-size:18px;font-weight:700;color:#e2e8f0;">${int.crowd_estimate.toLocaleString()}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#64748b;">FLOW</div>
-          <div style="font-size:18px;font-weight:700;color:#22d3ee;">${int.flow_direction}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${tc};box-shadow:0 0 6px ${tc};"></div>
-        <span style="font-size:11px;font-weight:600;color:${tc};">${int.threat_level}</span>
-      </div>
-      <div style="font-size:11px;color:#94a3b8;border-top:1px solid rgba(51,65,85,0.5);padding-top:6px;">
-        <span style="color:#22d3ee;font-weight:600;">AI:</span> ${int.ai_recommendation}
-      </div>
-    </div>
-  `;
-}
-
-/** Build the HTML for a cluster popup */
-function buildClusterPopup(cluster: Cluster): string {
-  const color = getHeatColor(cluster.maxHeat);
-  const top3 = [...cluster.intersections]
-    .sort((a, b) => b.heat - a.heat)
-    .slice(0, 3);
-
-  return `
-    <div class="intersection-popup">
-      <div style="font-size:11px;color:#94a3b8;letter-spacing:0.08em;margin-bottom:4px;">CLUSTER (${cluster.intersections.length} intersections)</div>
-      <div style="display:flex;gap:12px;margin-bottom:8px;">
-        <div>
-          <div style="font-size:10px;color:#64748b;">AVG HEAT</div>
-          <div style="font-size:18px;font-weight:700;color:${color};">${cluster.avgHeat}%</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#64748b;">PEAK</div>
-          <div style="font-size:18px;font-weight:700;color:${getHeatColor(cluster.maxHeat)};">${cluster.maxHeat}%</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#64748b;">CROWD</div>
-          <div style="font-size:18px;font-weight:700;color:#e2e8f0;">${cluster.totalCrowd.toLocaleString()}</div>
-        </div>
-      </div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:4px;">BUSIEST:</div>
-      ${top3.map((i) => `
-        <div style="font-size:11px;color:#cbd5e1;display:flex;justify-content:space-between;padding:2px 0;">
-          <span>${i.name.length > 28 ? i.name.slice(0, 28) + '...' : i.name}</span>
-          <span style="color:${getHeatColor(i.heat)};font-weight:600;">${i.heat}%</span>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-/** Renders intersection heat markers with zoom-based filtering and clustering */
-function IntersectionHeatLayer({
-  intersections,
-  zoom,
-}: {
-  intersections: Intersection[];
-  zoom: number;
-}) {
-  const map = useMap();
-  const markersRef = useRef<L.Layer[]>([]);
-
-  useEffect(() => {
-    // Clean up previous markers
-    markersRef.current.forEach((m) => map.removeLayer(m));
-    markersRef.current = [];
-
-    const minHeat = getMinHeatForZoom(zoom);
-    const visible = intersections.filter((i) => i.heat >= minHeat);
-
-    const clusters = clusterIntersections(visible, zoom);
-
-    clusters.forEach((cluster) => {
-      const isSingle = cluster.intersections.length === 1;
-      const displayHeat = isSingle ? cluster.avgHeat : cluster.maxHeat;
-      const radius = getHeatRadius(displayHeat, zoom);
-      const color = getHeatColor(displayHeat);
-      const glow = getHeatGlow(displayHeat);
-      const isCritical = displayHeat >= 85;
-      const isHigh = displayHeat >= 65;
-
-      // For clusters, show count; for singles, show heat%
-      const label = isSingle
-        ? `${cluster.avgHeat}`
-        : `${cluster.intersections.length}`;
-
-      const markerSize = isSingle ? radius * 2 : Math.max(radius * 2, 36);
-      const innerSize = isSingle ? radius * 2 : Math.max(radius * 2, 36);
-
-      const marker = L.marker([cluster.lat, cluster.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: `
-            <div style="position:relative;width:${markerSize}px;height:${markerSize}px;cursor:crosshair;">
-              <div class="${isCritical ? 'heat-marker-critical' : isHigh ? 'heat-marker-high' : 'heat-marker'}" style="
-                position:absolute;top:50%;left:50%;
-                transform:translate(-50%,-50%);
-                width:${innerSize}px;height:${innerSize}px;
-                border-radius:50%;
-                background:${isSingle ? color : `radial-gradient(circle, ${color} 0%, ${color}88 60%, ${color}33 100%)`};
-                border:${isSingle ? '2px' : '3px'} solid ${color};
-                box-shadow:0 0 ${isCritical ? '16' : '8'}px ${glow}, inset 0 0 ${isCritical ? '8' : '4'}px ${glow};
-                --pulse-color:${glow};
-                display:flex;align-items:center;justify-content:center;
-                opacity:${Math.max(0.5, displayHeat / 100)};
-              ">
-                <span style="
-                  font-family:ui-monospace,monospace;
-                  font-size:${markerSize > 30 ? '11px' : '9px'};
-                  font-weight:700;
-                  color:#fff;
-                  text-shadow:0 0 4px rgba(0,0,0,0.8);
-                  pointer-events:none;
-                ">${label}</span>
-              </div>
-              ${!isSingle ? `
-                <div style="
-                  position:absolute;top:50%;left:50%;
-                  transform:translate(-50%,-50%);
-                  width:${markerSize + 8}px;height:${markerSize + 8}px;
-                  border-radius:50%;
-                  border:1px dashed ${color}88;
-                  pointer-events:none;
-                "></div>
-              ` : ''}
-            </div>
-          `,
-          iconSize: [markerSize, markerSize],
-          iconAnchor: [markerSize / 2, markerSize / 2],
-        }),
-        interactive: true,
-      });
-
-      // Popup
-      const popupContent = isSingle
-        ? buildIntersectionPopup(cluster.intersections[0])
-        : buildClusterPopup(cluster);
-
-      marker.bindPopup(popupContent, {
-        className: 'retro-popup',
-        maxWidth: 280,
-        closeButton: true,
-        autoPan: true,
-        offset: [0, -8],
-      });
-
-      marker.addTo(map);
-      markersRef.current.push(marker);
-    });
-
-    return () => {
-      markersRef.current.forEach((m) => map.removeLayer(m));
-      markersRef.current = [];
-    };
-  }, [map, intersections, zoom]);
-
-  return null;
-}
-
-/** Hotspot markers rendered as Leaflet DOM overlays for click handling */
-function HotspotMarkers({
-  hotspots,
-  onHotspotClick,
-}: {
-  hotspots: Hotspot[];
-  onHotspotClick: (h: Hotspot) => void;
-}) {
-  const map = useMap();
-  const markersRef = useRef<L.Marker[]>([]);
-
-  useEffect(() => {
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    hotspots.forEach((hotspot) => {
-      const size = 24 + Math.pow(Math.max(0, (hotspot.density_pct - 50) / 70), 1.5) * 40;
-      const isCritical = hotspot.status === 'CRITICAL';
-      const colors = hotspot.density_pct > 90
-        ? { fill: '#ef4444', stroke: '#dc2626', shadow: 'rgba(239,68,68,0.7)' }
-        : hotspot.density_pct > 70
-          ? { fill: '#fbbf24', stroke: '#f59e0b', shadow: 'rgba(245,158,11,0.7)' }
-          : { fill: '#22d3ee', stroke: '#06b6d4', shadow: 'rgba(0,255,255,0.5)' };
-
-      const marker = L.marker([hotspot.lat, hotspot.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: `
-            <div style="position:relative;width:${size}px;height:${size}px;cursor:crosshair;">
-              <div class="hotspot-marker" style="
-                position:absolute;top:50%;left:50%;
-                transform:translate(-50%,-50%);
-                width:${size}px;height:${size}px;border-radius:50%;
-                background:${colors.fill};border:2px solid ${colors.stroke};
-                --pulse-color:${colors.shadow};
-                display:flex;align-items:center;justify-content:center;
-              ">
-                <span style="
-                  font-family:ui-monospace,monospace;font-size:${size > 30 ? '13px' : '11px'};
-                  font-weight:700;color:#000;
-                  text-shadow:0 0 4px rgba(255,255,255,0.5);pointer-events:none;
-                ">${hotspot.density_pct}%</span>
-              </div>
-              ${isCritical ? `
-                <div class="hotspot-ring" style="
-                  position:absolute;top:50%;left:50%;
-                  width:${size}px;height:${size}px;border-radius:50%;
-                  border:2px solid ${colors.stroke};pointer-events:none;
-                "></div>
-              ` : ''}
-            </div>
-          `,
-          iconSize: [size, size],
-          iconAnchor: [size / 2, size / 2],
-        }),
-        interactive: true,
-        zIndexOffset: 1000, // hotspots always on top of intersections
-      });
-
-      marker.on('click', () => onHotspotClick(hotspot));
-      marker.addTo(map);
-      markersRef.current.push(marker);
-    });
-
-    return () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-    };
-  }, [map, hotspots, onHotspotClick]);
-
-  return null;
-}
-
-/** Blurb markers as Leaflet overlays with hover tooltips */
-function BlurbMarkers({
-  blurbs,
-}: {
+interface TacticalMapProps {
+  dangerRoutes: number[][][];
+  safeRoutes: number[][][];
+  emergencyCorridors?: number[][][];
+  transitStatus?: TransitStatus;
   blurbs: Array<{ lat: number; lng: number; text: string }>;
-}) {
-  const map = useMap();
-  const markersRef = useRef<L.Marker[]>([]);
+  hotspots: Hotspot[];
+  intersections: Intersection[];
+  onHotspotClick: (hotspot: Hotspot) => void;
+}
 
+// ============================================================
+//  INTERSECTION TOOLTIP COMPONENT
+// ============================================================
+
+function IntersectionTooltip({ intersection, dims }: { intersection: Intersection; dims: Dims }) {
+  const pos = mapLatLngToPixels(intersection.lat, intersection.lng, dims);
+  const color = getHeatColor(intersection.heat);
+  const threatColors: Record<string, string> = {
+    LOW: '#22d3ee', MODERATE: '#eab308', HIGH: '#f97316', CRITICAL: '#ef4444',
+  };
+  const tc = threatColors[intersection.threat_level] || '#22d3ee';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="absolute z-50 pointer-events-none"
+      style={{
+        left: pos.x + 18,
+        top: pos.y - 12,
+        minWidth: 260,
+        maxWidth: 340,
+        fontFamily: 'ui-monospace, monospace',
+        background: 'rgba(2,6,23,0.95)',
+        border: '1px solid #22d3ee',
+        padding: '12px 16px',
+        boxShadow: '0 0 20px rgba(34,211,238,0.15)',
+      }}
+    >
+      <div style={{ fontSize: 12, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>INTERSECTION</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', marginBottom: 10, lineHeight: 1.3 }}>{intersection.name}</div>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>HEAT</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color }}>{intersection.heat}%</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>CROWD</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#e2e8f0' }}>{intersection.crowd_estimate.toLocaleString()}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>FLOW</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#22d3ee' }}>{intersection.flow_direction}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: tc, boxShadow: `0 0 10px ${tc}` }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: tc }}>{intersection.threat_level}</span>
+      </div>
+      <div style={{ fontSize: 13, color: '#94a3b8', borderTop: '1px solid rgba(51,65,85,0.5)', paddingTop: 8 }}>
+        <span style={{ color: '#22d3ee', fontWeight: 700 }}>AI:</span> {intersection.ai_recommendation}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+//  MAIN COMPONENT
+// ============================================================
+
+export function TacticalMap({
+  dangerRoutes = [],
+  safeRoutes = [],
+  emergencyCorridors = [],
+  transitStatus,
+  blurbs = [],
+  hotspots = [],
+  intersections = [],
+  onHotspotClick,
+}: TacticalMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dims, setDims] = useState<Dims>({ w: 800, h: 600 });
+  const [hoveredIntersection, setHoveredIntersection] = useState<Intersection | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const animFrameRef = useRef(0);
+  const emsPulseRef = useRef(0);
+
+  // ---- Resize Observer ----
   useEffect(() => {
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    const el = containerRef.current;
+    if (!el) return;
 
+    const updateDims = (width: number, height: number) => {
+      if (width > 0 && height > 0) {
+        setDims({ w: Math.round(width), h: Math.round(height) });
+      }
+    };
+
+    updateDims(el.clientWidth, el.clientHeight);
+
+    let ro: ResizeObserver | null = null;
+    const onWindowResize = () => updateDims(el.clientWidth, el.clientHeight);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          updateDims(width, height);
+        }
+      });
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    return () => {
+      if (ro) {
+        ro.disconnect();
+      } else {
+        window.removeEventListener('resize', onWindowResize);
+      }
+    };
+  }, []);
+
+  // ---- EMS pulse animation loop ----
+  useEffect(() => {
+    if (emergencyCorridors.length === 0) {
+      emsPulseRef.current = 0;
+      return;
+    }
+    let running = true;
+    const tick = () => {
+      if (!running) return;
+      emsPulseRef.current = (emsPulseRef.current + 2) % 200;
+      // Only trigger repaint when we actually have corridors
+      if (canvasRef.current) {
+        drawCanvas();
+      }
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+    return () => {
+      running = false;
+      cancelAnimationFrame(animFrameRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emergencyCorridors, dims, safeRoutes, dangerRoutes, intersections]);
+
+  // ============================================================
+  //  SEATTLE VECTOR BASEMAP DATA
+  //  Stylized polygons and lines for Elliott Bay, I-5, major roads
+  // ============================================================
+
+  // Elliott Bay water polygon (approximate coastline within our bounding box)
+  const ELLIOTT_BAY: Array<[number, number]> = [
+    [47.6060, -122.3420], // top-left corner
+    [47.6060, -122.3380],
+    [47.6045, -122.3370],
+    [47.6030, -122.3375],
+    [47.6010, -122.3385],
+    [47.5990, -122.3395],
+    [47.5975, -122.3400],
+    [47.5960, -122.3410],
+    [47.5940, -122.3415],
+    [47.5920, -122.3420],
+    [47.5900, -122.3420],
+    [47.5880, -122.3420],
+    [47.5830, -122.3420], // bottom-left corner
+    [47.6060, -122.3420], // close loop
+  ];
+
+  // I-5 Highway corridor (runs roughly N-S through center of district)
+  const I5_CORRIDOR: Array<[number, number]> = [
+    [47.6060, -122.3285],
+    [47.6040, -122.3282],
+    [47.6020, -122.3278],
+    [47.6000, -122.3275],
+    [47.5980, -122.3270],
+    [47.5960, -122.3265],
+    [47.5940, -122.3260],
+    [47.5920, -122.3255],
+    [47.5900, -122.3250],
+    [47.5880, -122.3245],
+    [47.5860, -122.3240],
+    [47.5830, -122.3235],
+  ];
+
+  // Major roads grid (stylized street segments)
+  const ROAD_GRID: Array<{ from: [number, number]; to: [number, number]; major?: boolean }> = [
+    // E-W streets
+    { from: [47.6045, -122.3400], to: [47.6045, -122.3140], major: true },  // S Jackson St
+    { from: [47.5990, -122.3400], to: [47.5990, -122.3140] },               // S King St
+    { from: [47.5960, -122.3400], to: [47.5960, -122.3140] },               // S Dearborn St
+    { from: [47.5935, -122.3400], to: [47.5935, -122.3140], major: true },  // S Royal Brougham
+    { from: [47.5910, -122.3400], to: [47.5910, -122.3140] },               // S Atlantic St
+    { from: [47.5895, -122.3400], to: [47.5895, -122.3140] },               // S Holgate St
+    { from: [47.5878, -122.3400], to: [47.5878, -122.3140] },               // S Lander St
+    // N-S streets
+    { from: [47.6060, -122.3380], to: [47.5830, -122.3380] },               // Alaskan Way S
+    { from: [47.6060, -122.3345], to: [47.5830, -122.3345], major: true },  // 1st Ave S
+    { from: [47.6060, -122.3320], to: [47.5830, -122.3320] },               // Occidental Ave S
+    { from: [47.6060, -122.3300], to: [47.5830, -122.3300] },               // 2nd Ave S / 3rd Ave S
+    { from: [47.6060, -122.3260], to: [47.5830, -122.3260] },               // 4th Ave S
+    { from: [47.6060, -122.3220], to: [47.5830, -122.3220] },               // Airport Way S / Rainier
+    { from: [47.6060, -122.3180], to: [47.5830, -122.3180] },               // 6th Ave S
+  ];
+
+  // Rail lines (Link Light Rail)
+  const RAIL_LINE: Array<[number, number]> = [
+    [47.6060, -122.3310],
+    [47.6020, -122.3305],
+    [47.5990, -122.3295],
+    [47.5970, -122.3290],
+    [47.5950, -122.3295],
+    [47.5930, -122.3295],
+    [47.5900, -122.3285],
+    [47.5870, -122.3275],
+    [47.5830, -122.3265],
+  ];
+
+  // ---- Canvas drawing ----
+  // Renders Seattle vector basemap first, then tactical routes, then event markers.
+  const drawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const { w, h } = dims;
+    try {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(w * dpr));
+      canvas.height = Math.max(1, Math.floor(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // --- Background (dark land) ---
+      ctx.fillStyle = '#0a0f1a';
+      ctx.fillRect(0, 0, w, h);
+
+      // Helper to convert lat/lng to pixels
+      const toPixels = (pt: number[] | [number, number]) => mapLatLngToPixels(pt[0], pt[1], dims);
+
+    // ===============================================
+    //  BASEMAP LAYER 1: Elliott Bay water
+    // ===============================================
+    ctx.beginPath();
+    const bayStart = toPixels(ELLIOTT_BAY[0]);
+    ctx.moveTo(bayStart.x, bayStart.y);
+    for (let i = 1; i < ELLIOTT_BAY.length; i++) {
+      const p = toPixels(ELLIOTT_BAY[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#0c1929';
+    ctx.fill();
+    // Water edge glow
+    ctx.strokeStyle = 'rgba(34,211,238,0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // ===============================================
+    //  BASEMAP LAYER 2: Road Grid
+    // ===============================================
+    ROAD_GRID.forEach((road) => {
+      const from = toPixels(road.from);
+      const to = toPixels(road.to);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = road.major ? 'rgba(51,65,85,0.5)' : 'rgba(30,41,59,0.45)';
+      ctx.lineWidth = road.major ? 2 : 1;
+      ctx.stroke();
+    });
+
+    // ===============================================
+    //  BASEMAP LAYER 3: I-5 Highway
+    // ===============================================
+    // Wide dark highway bed
+    ctx.beginPath();
+    const i5Start = toPixels(I5_CORRIDOR[0]);
+    ctx.moveTo(i5Start.x, i5Start.y);
+    for (let i = 1; i < I5_CORRIDOR.length; i++) {
+      const p = toPixels(I5_CORRIDOR[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = 'rgba(51,65,85,0.6)';
+    ctx.lineWidth = 10;
+    ctx.stroke();
+    // Highway center dashes
+    ctx.beginPath();
+    ctx.moveTo(i5Start.x, i5Start.y);
+    for (let i = 1; i < I5_CORRIDOR.length; i++) {
+      const p = toPixels(I5_CORRIDOR[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = 'rgba(100,116,139,0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([8, 8]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ===============================================
+    //  BASEMAP LAYER 4: Light Rail
+    // ===============================================
+    ctx.beginPath();
+    const railStart = toPixels(RAIL_LINE[0]);
+    ctx.moveTo(railStart.x, railStart.y);
+    for (let i = 1; i < RAIL_LINE.length; i++) {
+      const p = toPixels(RAIL_LINE[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = 'rgba(34,211,238,0.15)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([4, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ===============================================
+    //  BASEMAP LAYER 5: Glowing Grid Overlay
+    // ===============================================
+    const gridSpacing = 20;
+    ctx.strokeStyle = 'rgba(0,255,255,0.03)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < w; x += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // ===============================================
+    //  BASEMAP LABELS (street names -- muted)
+    // ===============================================
+    ctx.font = '600 9px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(100,116,139,0.35)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const labelOffset = 3;
+    // Horizontal street labels
+    const streetLabels: Array<{ lat: number; lng: number; text: string }> = [
+      { lat: 47.6045, lng: -122.3395, text: 'S JACKSON ST' },
+      { lat: 47.5990, lng: -122.3395, text: 'S KING ST' },
+      { lat: 47.5935, lng: -122.3395, text: 'S ROYAL BROUGHAM' },
+      { lat: 47.5895, lng: -122.3395, text: 'S HOLGATE ST' },
+      { lat: 47.5878, lng: -122.3395, text: 'S LANDER ST' },
+    ];
+    streetLabels.forEach((sl) => {
+      const p = toPixels([sl.lat, sl.lng]);
+      ctx.fillText(sl.text, p.x + labelOffset, p.y + labelOffset);
+    });
+    // Vertical street labels
+    ctx.save();
+    const vStreetLabels: Array<{ lat: number; lng: number; text: string }> = [
+      { lat: 47.6055, lng: -122.3345, text: '1ST AVE S' },
+      { lat: 47.6055, lng: -122.3300, text: '3RD AVE S' },
+      { lat: 47.6055, lng: -122.3260, text: '4TH AVE S' },
+      { lat: 47.6055, lng: -122.3220, text: 'AIRPORT WAY' },
+    ];
+    vStreetLabels.forEach((vl) => {
+      const p = toPixels([vl.lat, vl.lng]);
+      ctx.save();
+      ctx.translate(p.x + labelOffset, p.y + 4);
+      ctx.rotate(Math.PI / 2);
+      ctx.fillText(vl.text, 0, 0);
+      ctx.restore();
+    });
+    ctx.restore();
+
+    // I-5 label
+    ctx.font = 'bold 11px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(100,116,139,0.5)';
+    const i5LabelPos = toPixels([47.6000, -122.3275]);
+    ctx.save();
+    ctx.translate(i5LabelPos.x + 8, i5LabelPos.y);
+    ctx.rotate(-0.08);
+    ctx.fillText('I-5', 0, 0);
+    ctx.restore();
+
+    // Elliott Bay label
+    ctx.font = 'italic 11px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(34,211,238,0.2)';
+    const bayLabelPos = toPixels([47.5950, -122.3408]);
+    ctx.save();
+    ctx.translate(bayLabelPos.x, bayLabelPos.y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('ELLIOTT BAY', 0, 0);
+    ctx.restore();
+
+    // ===============================================
+    //  TACTICAL OVERLAYS
+    // ===============================================
+
+    // --- Safe Routes ---
+    safeRoutes.forEach((route) => {
+      if (route.length < 2) return;
+      ctx.beginPath();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 5;
+      ctx.shadowColor = 'rgba(16,185,129,0.7)';
+      ctx.shadowBlur = 18;
+      ctx.setLineDash([]);
+      const start = toPixels(route[0]);
+      ctx.moveTo(start.x, start.y);
+      for (let i = 1; i < route.length; i++) {
+        const p = toPixels(route[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    });
+    ctx.shadowBlur = 0;
+
+    // --- Danger Routes ---
+    dangerRoutes.forEach((route) => {
+      if (route.length < 2) return;
+      ctx.beginPath();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 5;
+      ctx.shadowColor = 'rgba(239,68,68,0.7)';
+      ctx.shadowBlur = 16;
+      ctx.setLineDash([8, 6]);
+      const start = toPixels(route[0]);
+      ctx.moveTo(start.x, start.y);
+      for (let i = 1; i < route.length; i++) {
+        const p = toPixels(route[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    // --- EMS Corridors ---
+    emergencyCorridors.forEach((route) => {
+      if (route.length < 2) return;
+
+      // Thick blue base stroke
+      ctx.beginPath();
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 12;
+      ctx.shadowColor = 'rgba(37,99,235,0.8)';
+      ctx.shadowBlur = 20;
+      ctx.setLineDash([]);
+      const start = toPixels(route[0]);
+      ctx.moveTo(start.x, start.y);
+      for (let i = 1; i < route.length; i++) {
+        const p = toPixels(route[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Aggressive pulsing white overlay
+      const pulseOpacity = 0.4 + 0.6 * Math.abs(Math.sin((emsPulseRef.current / 200) * Math.PI * 2));
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(255,255,255,${pulseOpacity.toFixed(2)})`;
+      ctx.lineWidth = 5;
+      ctx.setLineDash([12, 8]);
+      ctx.lineDashOffset = -emsPulseRef.current;
+      ctx.moveTo(start.x, start.y);
+      for (let i = 1; i < route.length; i++) {
+        const p = toPixels(route[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+    });
+
+    // --- Intersection heat dots (painted on canvas for perf) ---
+    intersections.forEach((int) => {
+      if (!int || !Number.isFinite(int.lat) || !Number.isFinite(int.lng) || !Number.isFinite(int.heat)) {
+        return;
+      }
+      const pos = toPixels([int.lat, int.lng]);
+      const color = getHeatColor(int.heat);
+      const glow = getHeatGlow(int.heat);
+      const radius = 6 + (int.heat / 100) * 14;
+      const opacity = Math.max(0.5, int.heat / 100);
+
+      ctx.globalAlpha = opacity;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = int.heat >= 85 ? 24 : int.heat >= 65 ? 16 : 8;
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+
+      // Critical pulse ring
+      if (int.heat >= 85) {
+        const pulseRadius = radius + 6 + Math.sin(Date.now() / 300) * 4;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, pulseRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(239,68,68,${0.4 + Math.sin(Date.now() / 300) * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Heat label
+      if (int.heat >= 30) {
+        ctx.font = '700 11px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`${int.heat}`, pos.x, pos.y);
+        ctx.shadowBlur = 0;
+      }
+    });
+
+    // --- Lumen Field marker ---
+    const lf = toPixels([LUMEN_FIELD.lat, LUMEN_FIELD.lng]);
+    // Outer glow ring
+    ctx.beginPath();
+    ctx.arc(lf.x, lf.y, 20, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,255,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0,255,255,0.4)';
+    ctx.shadowBlur = 16;
+    ctx.stroke();
+    // Core dot
+    ctx.beginPath();
+    ctx.arc(lf.x, lf.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,255,255,0.9)';
+    ctx.shadowColor = 'rgba(0,255,255,0.8)';
+    ctx.shadowBlur = 24;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Label
+    ctx.font = 'bold 12px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(0,255,255,0.85)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText('LUMEN FIELD', lf.x + 16, lf.y);
+    ctx.shadowBlur = 0;
+
+    // --- Blurb dots ---
     blurbs.forEach((blurb) => {
+      const pos = toPixels([blurb.lat, blurb.lng]);
       const isWarning = blurb.text.includes('HIGH') || blurb.text.includes('110%');
       const color = isWarning ? '#ef4444' : '#f59e0b';
       const shadowColor = isWarning ? 'rgba(239,68,68,0.8)' : 'rgba(245,158,11,0.8)';
 
-      const marker = L.marker([blurb.lat, blurb.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: `
-            <div style="
-              width:20px;height:20px;border-radius:50%;
-              background:${color};border:2px solid ${color};
-              box-shadow:0 0 12px ${shadowColor};opacity:0.85;
-            "></div>
-          `,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        }),
-        interactive: true,
-        zIndexOffset: 500,
-      });
-
-      marker.bindTooltip(
-        `<div style="
-          font-family:ui-monospace,monospace;font-size:12px;
-          background:rgba(2,6,23,0.95);border:1px solid #22d3ee;
-          padding:6px 10px;
-          color:${isWarning ? '#ef4444' : blurb.text.includes('OPEN') ? '#34d399' : '#fbbf24'};
-        ">
-          <div style="font-weight:700;color:#22d3ee;margin-bottom:2px;">ALERT</div>
-          ${blurb.text}
-        </div>`,
-        { direction: 'right', offset: [12, 0], opacity: 1, className: 'blurb-tooltip' }
-      );
-
-      marker.addTo(map);
-      markersRef.current.push(marker);
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.shadowColor = shadowColor;
+      ctx.shadowBlur = 18;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
     });
 
-    return () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-    };
-  }, [map, blurbs]);
+      setMapError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Canvas render failed';
+      setMapError(message);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dims, safeRoutes, dangerRoutes, emergencyCorridors, intersections, blurbs]);
 
-  return null;
-}
+  // ---- Trigger canvas redraw on data / size changes ----
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
 
-// -------- main component --------
-
-export function TacticalMap({
-  dangerRoutes,
-  safeRoutes,
-  blurbs,
-  hotspots,
-  intersections,
-  onHotspotClick,
-}: TacticalMapProps) {
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-
-  const safeLatLngs = useMemo(
-    () => safeRoutes.map((route) => route.map((pt) => [pt[0], pt[1]] as [number, number])),
-    [safeRoutes]
-  );
-
-  const dangerLatLngs = useMemo(
-    () => dangerRoutes.map((route) => route.map((pt) => [pt[0], pt[1]] as [number, number])),
-    [dangerRoutes]
-  );
-
-  const handleZoomChange = useCallback((z: number) => setZoom(z), []);
-
-  // Count visible intersections for the HUD
-  const visibleCount = useMemo(() => {
-    const minHeat = getMinHeatForZoom(zoom);
-    return intersections.filter((i) => i.heat >= minHeat).length;
-  }, [intersections, zoom]);
-
+  // ---- Stats ----
   const criticalCount = useMemo(
     () => intersections.filter((i) => i.threat_level === 'CRITICAL').length,
     [intersections]
   );
+  const visibleCount = intersections.length;
+
+  // ---- Intersection hover handler via canvas hit-testing ----
+  const handleCanvasMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      let closest: Intersection | null = null;
+      let closestDist = 20; // threshold in pixels
+
+      intersections.forEach((int) => {
+        if (!int || !Number.isFinite(int.lat) || !Number.isFinite(int.lng)) return;
+        const pos = mapLatLngToPixels(int.lat, int.lng, dims);
+        const dist = Math.hypot(pos.x - mx, pos.y - my);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = int;
+        }
+      });
+
+      setHoveredIntersection(closest);
+    },
+    [intersections, dims]
+  );
+
+  const handleCanvasMouseLeave = useCallback(() => {
+    setHoveredIntersection(null);
+  }, []);
+
+  // ---- Determine which hotspot markers are locked down ----
+  const stadiumLockdown = transitStatus?.stadium_station === 'LOCKED_DOWN';
 
   return (
-    <div className="relative w-full h-full overflow-hidden" style={{ background: '#080c14' }}>
-      {/* Map Title Overlay */}
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden" style={{ background: '#080c14' }}>
+
+      {/* ===== HUD Title Overlay ===== */}
       <motion.div
-        className="absolute top-3 left-3 z-[1000] font-mono pointer-events-none"
+        className="absolute top-3 left-3 z-30 font-mono pointer-events-none"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.2 }}
@@ -517,116 +714,290 @@ export function TacticalMap({
             padding: '8px 12px',
           }}
         >
-          <div style={{ color: '#22d3ee', fontSize: '11px', marginBottom: '2px', letterSpacing: '0.1em' }}>
-            TACTICAL
-          </div>
-          <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>LUMEN FIELD</div>
-          <div style={{ fontSize: '11px', marginTop: '2px', display: 'flex', gap: '6px' }}>
-            {safeRoutes.length > 0 && (
-              <span style={{ color: '#34d399' }}>{'SAFE:'}{safeRoutes.length}</span>
-            )}
-            {dangerRoutes.length > 0 && (
-              <span style={{ color: '#ef4444' }}>{'DANGER:'}{dangerRoutes.length}</span>
-            )}
-            <span style={{ color: '#22d3ee' }}>{'INT:'}{visibleCount}/{intersections.length}</span>
-            {criticalCount > 0 && (
-              <span style={{ color: '#ef4444' }}>{'CRIT:'}{criticalCount}</span>
-            )}
+          <div style={{ color: '#22d3ee', fontSize: 13, marginBottom: 2, letterSpacing: '0.12em' }}>TACTICAL OVERVIEW</div>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 18 }}>LUMEN FIELD DISTRICT</div>
+          <div style={{ fontSize: 13, marginTop: 4, display: 'flex', gap: 8 }}>
+            {safeRoutes.length > 0 && <span style={{ color: '#34d399' }}>{'SAFE:'}{safeRoutes.length}</span>}
+            {dangerRoutes.length > 0 && <span style={{ color: '#ef4444' }}>{'DANGER:'}{dangerRoutes.length}</span>}
+            {emergencyCorridors.length > 0 && <span style={{ color: '#60a5fa' }}>{'EMS:'}{emergencyCorridors.length}</span>}
+            <span style={{ color: '#22d3ee' }}>{'INT:'}{visibleCount}</span>
+            {criticalCount > 0 && <span style={{ color: '#ef4444' }}>{'CRIT:'}{criticalCount}</span>}
           </div>
         </div>
       </motion.div>
 
-      {/* Zoom level indicator */}
-      <div
-        className="absolute top-3 right-3 z-[1000] font-mono pointer-events-none"
-        style={{
-          fontSize: '10px',
-          color: 'rgba(34,211,238,0.5)',
-          background: 'rgba(2,6,23,0.7)',
-          padding: '4px 8px',
-          border: '1px solid rgba(34,211,238,0.2)',
-        }}
-      >
-        Z{zoom}
+      {/* ===== HTML5 Canvas ===== */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 z-10"
+        style={{ width: dims.w, height: dims.h, cursor: 'crosshair' }}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseLeave={handleCanvasMouseLeave}
+      />
+
+      {mapError && (
+        <div className="absolute bottom-3 right-3 z-50 pointer-events-none">
+          <div className="font-mono text-[11px] text-red-400 border border-red-500 bg-black/70 px-2 py-1">
+            MAP RENDER ERROR: {mapError}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Foreground HTML Overlay ===== */}
+      <div className="absolute inset-0 z-20 pointer-events-none">
+
+        {/* -- Transit Hub Markers -- */}
+        {TRANSIT_HUBS.map((hub) => {
+          const pos = mapLatLngToPixels(hub.lat, hub.lng, dims);
+          const status = transitStatus?.[hub.statusKey];
+          const isLocked = status === 'LOCKED_DOWN';
+
+          return (
+            <div
+              key={hub.id}
+              className="absolute pointer-events-auto"
+              style={{
+                left: pos.x,
+                top: pos.y,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              {isLocked ? (
+                <motion.div
+                  animate={{ scale: [1, 1.12, 1], opacity: [1, 0.7, 1] }}
+                  transition={{ repeat: Infinity, duration: 0.9, ease: 'easeInOut' }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 100,
+                      height: 100,
+                      borderRadius: '50%',
+                      background: 'rgba(127,29,29,0.95)',
+                      border: '4px solid #ef4444',
+                      boxShadow: '0 0 40px rgba(239,68,68,0.9), 0 0 80px rgba(239,68,68,0.5), 0 0 120px rgba(239,68,68,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: 32,
+                      fontWeight: 900,
+                      color: '#fee2e2',
+                      textShadow: '0 0 12px rgba(239,68,68,0.9)',
+                    }}
+                  >
+                    [ X ]
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: 16,
+                      fontWeight: 900,
+                      color: '#ef4444',
+                      letterSpacing: '0.15em',
+                      textShadow: '0 0 12px rgba(239,68,68,0.9), 0 0 24px rgba(239,68,68,0.5)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    STATION CLOSED
+                  </div>
+                </motion.div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#22d3ee',
+                      border: '2px solid rgba(0,255,255,0.8)',
+                      boxShadow: '0 0 14px rgba(0,255,255,0.6)',
+                    }}
+                  />
+                  <div
+                    style={{
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'rgba(34,211,238,0.9)',
+                      letterSpacing: '0.08em',
+                      whiteSpace: 'nowrap',
+                      textShadow: '0 0 6px rgba(0,0,0,0.8)',
+                    }}
+                  >
+                    {hub.label}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* -- Hotspot Markers -- */}
+        {hotspots.map((hotspot) => {
+          const pos = mapLatLngToPixels(hotspot.lat, hotspot.lng, dims);
+          const isStadium =
+            hotspot.id.toLowerCase().includes('stadium') ||
+            hotspot.name.toLowerCase().includes('stadium');
+          const lockedDown = stadiumLockdown && isStadium;
+          const size = 32 + Math.pow(Math.max(0, (hotspot.density_pct - 50) / 70), 1.5) * 50;
+          const isCritical = hotspot.status === 'CRITICAL' || lockedDown;
+          const colors =
+            hotspot.density_pct > 90
+              ? { fill: '#ef4444', stroke: '#dc2626', shadow: 'rgba(239,68,68,0.8)' }
+              : hotspot.density_pct > 70
+                ? { fill: '#fbbf24', stroke: '#f59e0b', shadow: 'rgba(245,158,11,0.8)' }
+                : { fill: '#22d3ee', stroke: '#06b6d4', shadow: 'rgba(0,255,255,0.6)' };
+
+          return (
+            <motion.div
+              key={hotspot.id}
+              className="absolute pointer-events-auto cursor-crosshair"
+              style={{
+                left: pos.x,
+                top: pos.y,
+                transform: 'translate(-50%, -50%)',
+                zIndex: 25,
+              }}
+              whileHover={{ scale: 1.15 }}
+              onClick={() => onHotspotClick(hotspot)}
+            >
+              <div
+                style={{
+                  width: size,
+                  height: size,
+                  borderRadius: '50%',
+                  background: lockedDown ? 'rgba(127,29,29,0.92)' : colors.fill,
+                  border: `3px solid ${lockedDown ? '#ef4444' : colors.stroke}`,
+                  boxShadow: `0 0 ${isCritical ? 28 : 14}px ${colors.shadow}, 0 0 ${isCritical ? 56 : 28}px ${colors.shadow}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: lockedDown ? (size > 40 ? 24 : 18) : (size > 40 ? 16 : 13),
+                  fontWeight: 800,
+                  color: lockedDown ? '#fee2e2' : '#000',
+                  textShadow: lockedDown ? '0 0 8px rgba(239,68,68,0.8)' : '0 0 4px rgba(255,255,255,0.5)',
+                }}
+              >
+                {lockedDown ? '[ X ]' : `${hotspot.density_pct}%`}
+              </div>
+              {isCritical && (
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.7, 0, 0.7] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: size,
+                    height: size,
+                    borderRadius: '50%',
+                    border: `2px solid ${colors.stroke}`,
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </motion.div>
+          );
+        })}
+
+        {/* -- Blurb Tooltips (appear on hover proximity via canvas) -- */}
+        {blurbs.map((blurb, i) => {
+          const pos = mapLatLngToPixels(blurb.lat, blurb.lng, dims);
+          const isWarning = blurb.text.includes('HIGH') || blurb.text.includes('110%');
+          return (
+            <div
+              key={`blurb-${i}`}
+              className="absolute pointer-events-auto"
+              style={{
+                left: pos.x + 18,
+                top: pos.y - 10,
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: 14,
+                background: 'rgba(2,6,23,0.95)',
+                border: '1px solid #22d3ee',
+                padding: '8px 12px',
+                color: isWarning ? '#ef4444' : blurb.text.includes('OPEN') ? '#34d399' : '#fbbf24',
+                whiteSpace: 'nowrap',
+                zIndex: 26,
+                boxShadow: '0 0 16px rgba(34,211,238,0.2)',
+              }}
+            >
+              <div style={{ fontWeight: 700, color: '#22d3ee', marginBottom: 2, fontSize: 11, letterSpacing: '0.08em' }}>ALERT</div>
+              {blurb.text}
+            </div>
+          );
+        })}
+
+        {/* -- Intersection hover tooltip -- */}
+        <AnimatePresence>
+          {hoveredIntersection && (
+            <IntersectionTooltip key={hoveredIntersection.id} intersection={hoveredIntersection} dims={dims} />
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Leaflet Map */}
-      <MapContainer
-        center={LUMEN_FIELD}
-        zoom={DEFAULT_ZOOM}
-        zoomControl={false}
-        attributionControl={false}
-        scrollWheelZoom={true}
-        dragging={true}
-        doubleClickZoom={false}
-        style={{ width: '100%', height: '100%', background: '#080c14' }}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
-          maxZoom={19}
-        />
-
-        <MapUpdater routes={safeRoutes} />
-        <ZoomTracker onZoomChange={handleZoomChange} />
-        <StadiumMarker />
-
-        {/* Intersection heat layer -- rendered BELOW hotspots */}
-        <IntersectionHeatLayer intersections={intersections} zoom={zoom} />
-
-        {/* Safe Routes */}
-        {safeLatLngs.map((positions, i) => (
-          <Polyline
-            key={`safe-${i}`}
-            positions={positions}
-            pathOptions={{ color: '#10b981', weight: 4, opacity: 0.85, className: 'safe-route' }}
-          />
-        ))}
-
-        {/* Danger Routes */}
-        {dangerLatLngs.map((positions, i) => (
-          <Polyline
-            key={`danger-${i}`}
-            positions={positions}
-            pathOptions={{ color: '#ef4444', weight: 4, opacity: 0.85, dashArray: '12 8', className: 'danger-route' }}
-          />
-        ))}
-
-        {/* Hotspot markers -- on top */}
-        <HotspotMarkers hotspots={hotspots} onHotspotClick={onHotspotClick} />
-
-        {/* Blurb alert markers */}
-        <BlurbMarkers blurbs={blurbs} />
-      </MapContainer>
-
-      {/* Scanline effect overlay */}
+      {/* ===== CRT Scanline Overlay (subtle to avoid washing out map) ===== */}
       <div
-        className="absolute inset-0 pointer-events-none z-[999]"
+        className="absolute inset-0 pointer-events-none z-40"
         style={{
-          background: `repeating-linear-gradient(
-            0deg, transparent, transparent 2px,
-            rgba(0, 255, 255, 0.015) 2px, rgba(0, 255, 255, 0.015) 4px
-          )`,
+          background: `
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 2px,
+              rgba(0, 255, 255, 0.008) 2px,
+              rgba(0, 255, 255, 0.008) 4px
+            )
+          `,
         }}
       />
 
-      {/* Scanning sweep line */}
+      {/* ===== Vignette Overlay (reduced for projector) ===== */}
       <div
-        className="absolute left-0 right-0 pointer-events-none z-[999] map-scan-line"
+        className="absolute inset-0 pointer-events-none z-40"
         style={{
-          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,255,255,0.08) 50%, transparent 100%)',
-          height: '80px',
+          background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.45) 100%)',
         }}
       />
 
-      {/* Bottom-left coordinates label */}
+      {/* ===== Scanning Sweep Line ===== */}
       <div
-        className="absolute bottom-3 left-3 z-[500] font-mono pointer-events-none"
-        style={{ fontSize: '11px', color: 'rgba(34,211,238,0.45)' }}
+        className="absolute left-0 right-0 pointer-events-none z-40 map-scan-line"
+        style={{
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,255,255,0.04) 50%, transparent 100%)',
+          height: 60,
+        }}
+      />
+
+      {/* ===== Bottom-left Coordinates ===== */}
+      <div
+        className="absolute bottom-3 left-3 z-40 font-mono pointer-events-none"
+        style={{ fontSize: 13, color: 'rgba(34,211,238,0.5)' }}
       >
-        <div>47.5952 N</div>
-        <div>122.3316 W</div>
+        <div>47.5952 N / 122.3316 W</div>
+        <div style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)', marginTop: 2 }}>SEATTLE STADIUM DISTRICT</div>
       </div>
+
+      {/* ===== Scan line animation ===== */}
+      <style>{`
+        .map-scan-line {
+          animation: scanSweep 4s linear infinite;
+        }
+        @keyframes scanSweep {
+          0% { top: -80px; }
+          100% { top: 100%; }
+        }
+      `}</style>
     </div>
   );
 }
+
+

@@ -17,6 +17,12 @@ export interface Hotspot {
   recommended_action?: string;
 }
 
+export interface TransitStatus {
+  stadium_station?: string;
+  king_st?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Intersection {
   id: string;
   name: string;
@@ -32,6 +38,7 @@ export interface Intersection {
 export interface TimelineMinute {
   minute: number;
   time_label: string;
+  timestamp_label?: string;
   game_state: GameState;
   threat_score: number;
   alert_message: string;
@@ -42,6 +49,12 @@ export interface TimelineMinute {
   intersections: Intersection[];
   severity?: number;
   estimated_crowd_volume?: number;
+  predicted_surge_velocity?: number;
+  critical_capacity_threshold?: number;
+  platform_utilization_pct?: number;
+  transit_status?: TransitStatus;
+  emergency_corridors?: number[][][];
+  ai_log_lines?: string[];
   transit_load?: Record<string, number>;
   pedestrian_volume?: Record<string, number>;
 }
@@ -416,12 +429,64 @@ function generateTimeline(scenarioType: 'normal' | 'high_attendance' | 'blowout'
       }
     }
     
+    let predicted_surge_velocity = Math.round(25 + threat_score * 155);
+    const critical_capacity_threshold = 133;
+    let platform_utilization_pct = Math.round((predicted_surge_velocity / critical_capacity_threshold) * 100);
+    let transit_status: TransitStatus = {
+      stadium_station: platform_utilization_pct >= 110 ? 'LOCKED_DOWN' : 'OPEN',
+      king_st: 'OPEN',
+    };
+    let emergency_corridors: number[][][] =
+      transit_status.stadium_station === 'LOCKED_DOWN'
+        ? [[[47.6044, -122.3238], [47.6019, -122.3258], [47.5994, -122.3282], [47.5972, -122.3299], [47.5952, -122.3316]]]
+        : [];
+    let ai_log_lines =
+      transit_status.stadium_station === 'LOCKED_DOWN'
+        ? [
+            'THREAT EXCEEDS PLATFORM LIMIT.',
+            'EXECUTING STATION LOCKDOWN.',
+            'MAPPING EMS CORRIDORS.',
+          ]
+        : [
+            'MONITORING CORRIDOR FLOW.',
+            'CAPACITY WITHIN SAFE LIMITS.',
+            'NO INTERVENTION REQUIRED.',
+          ];
+
+    if (scenarioType === 'blowout' && i === 1125) {
+      game_state = { home: 14, away: 42, clock: '6:12', qtr: 3 };
+      threat_score = 0.95;
+      alert_message =
+        'CRITICAL: Surge velocity exceeds platform limit. Medical emergency flagged near Lumen Field.';
+      predicted_surge_velocity = 186;
+      platform_utilization_pct = Math.round((predicted_surge_velocity / critical_capacity_threshold) * 100);
+      transit_status = { stadium_station: 'LOCKED_DOWN', king_st: 'OPEN' };
+      emergency_corridors = [
+        [[47.6044, -122.3238], [47.6019, -122.3258], [47.5994, -122.3282], [47.5972, -122.3299], [47.5952, -122.3316]],
+      ];
+      ai_log_lines = [
+        'THREAT EXCEEDS PLATFORM LIMIT.',
+        'EXECUTING STATION LOCKDOWN.',
+        'MAPPING EMS CORRIDORS.',
+      ];
+      danger_routes = [[lumenField, stadiumStation]];
+      safe_routes = [
+        [lumenField, kingStreetStation],
+        [lumenField, westlakeStation],
+      ];
+      blurbs = [
+        { lat: 47.5980, lng: -122.3300, text: '[ X - STATION CLOSED ] Crush Risk Detected.' },
+        { lat: 47.5990, lng: -122.3280, text: 'King St OPEN - Route Here.' },
+      ];
+    }
+
     const hotspots = generateHotspots(i, scenarioType, isGameTime, isPostGame);
     const intersections = generateIntersections(i, scenarioType);
-    
+
     timeline.push({
       minute: i,
       time_label,
+      timestamp_label: time_label,
       game_state,
       threat_score,
       alert_message,
@@ -430,6 +495,14 @@ function generateTimeline(scenarioType: 'normal' | 'high_attendance' | 'blowout'
       blurbs,
       hotspots,
       intersections,
+      predicted_surge_velocity,
+      critical_capacity_threshold,
+      platform_utilization_pct,
+      transit_status,
+      emergency_corridors,
+      ai_log_lines,
+      estimated_crowd_volume: Math.round(threat_score * 68000),
+      severity: threat_score >= 0.85 ? 5 : threat_score >= 0.7 ? 4 : threat_score >= 0.5 ? 3 : threat_score >= 0.3 ? 2 : 1,
     });
   }
   
