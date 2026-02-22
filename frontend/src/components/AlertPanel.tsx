@@ -47,9 +47,9 @@ export function AlertPanel({
 
   return (
     <motion.div
-      className="border border-slate-600 p-2 h-full overflow-y-auto relative"
+      className="border border-slate-800 p-2 h-full overflow-y-auto relative"
       style={{
-        backgroundColor: 'rgba(51, 65, 85, 0.85)',
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(20px)'
       }}
       initial={{ x: 100, opacity: 0 }}
@@ -57,7 +57,7 @@ export function AlertPanel({
       transition={{ duration: 0.3 }}
     >
       {/* Scanlines */}
-      <div
+      <div 
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `repeating-linear-gradient(
@@ -159,7 +159,7 @@ export function AlertPanel({
             >
               <div className="text-xs leading-tight">
                 <span className={`${threat.color} font-bold`}>
-                  {alertMessage.length > 80 ? alertMessage.substring(0, 80) + '...' : alertMessage}
+                  {alertMessage.length > 160 ? alertMessage.substring(0, 160) + '...' : alertMessage}
                 </span>
               </div>
             </motion.div>
@@ -174,7 +174,7 @@ export function AlertPanel({
                     [{severityLabel(entry.severity)}]
                   </span>{' '}
                   <span className="text-slate-400">
-                    {entry.message.length > 48 ? `${entry.message.substring(0, 48)}...` : entry.message}
+                    {entry.message.length > 100 ? `${entry.message.substring(0, 100)}...` : entry.message}
                   </span>
                 </div>
               ))}
