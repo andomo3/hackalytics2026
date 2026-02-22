@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect } from 'react';
-import { Hotspot } from './mockData';
+import { Hotspot } from './types';
 
 interface HotspotModalProps {
   hotspot: Hotspot | null;
@@ -72,7 +72,7 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
           
           {/* Header */}
           <div className="mb-6">
-            <div className="text-cyan-400 text-xs mb-2">HOTSPOT ANALYSIS // {currentTime}</div>
+            <div className="text-cyan-400 text-xs mb-2">CORRIDOR ANALYSIS // {currentTime}</div>
             <h2 className="text-3xl font-bold text-white tracking-wider mb-2">
               {hotspot.name}
             </h2>
@@ -100,9 +100,9 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
             }}
           />
           
-          {/* Current Density */}
+          {/* Corridor congestion (traffic density) */}
           <div className="mb-6 relative z-10">
-            <div className="text-slate-400 text-xs mb-2">CURRENT CAPACITY</div>
+            <div className="text-slate-400 text-xs mb-2">CORRIDOR CONGESTION</div>
             <div className="flex items-end gap-4">
               <div className="text-6xl font-bold text-cyan-400">
                 {hotspot.density_pct}
@@ -153,10 +153,10 @@ export function HotspotModal({ hotspot, onClose, currentTime }: HotspotModalProp
             </div>
           </div>
           
-          {/* Forecasted Density */}
+          {/* Traffic forecast */}
           {hotspot.forecasted_density && (
             <div className="mb-6 relative z-10">
-              <div className="text-slate-400 text-xs mb-2">FORECASTED (+30 MIN)</div>
+              <div className="text-slate-400 text-xs mb-2">TRAFFIC FORECAST (+30 MIN)</div>
               <div className="flex items-center gap-4 border-2 border-slate-800 bg-slate-900 bg-opacity-50 p-4">
                 <div className="text-3xl font-bold text-amber-400">
                   {hotspot.forecasted_density}%

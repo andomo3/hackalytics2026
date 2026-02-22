@@ -1,15 +1,15 @@
 services:
   backend:
-    image: andomo3/safetransit-backend:dev
-    platform: linux/amd64
+    build: ./backend
     env_file:
       - ./.env
     ports:
       - "8000:8000"
+    volumes:
+      - ./mainData:/mainData:ro
 
   frontend:
-    image: andomo3/safetransit-frontend:dev
-    platform: linux/amd64
+    build: ./frontend
     ports:
       - "5173:5173"
     depends_on:

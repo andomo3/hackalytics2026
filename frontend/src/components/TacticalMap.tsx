@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { Hotspot } from './mockData';
+import { Hotspot } from './types';
 
 interface TacticalMapProps {
   dangerRoutes: number[][][];

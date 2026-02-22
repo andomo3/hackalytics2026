@@ -1,20 +1,70 @@
 [
   {
-    "id": "route_stadium_to_king_street",
-    "label": "Lumen Field to King Street Station",
+    "id": "route_stadium_1st_ave",
+    "label": "1st Ave S (Stadium Station corridor)",
+    "corridor": "stadium_1st_ave",
     "path": [
       [47.5952, -122.3316],
-      [47.5962, -122.3295],
-      [47.5984, -122.3290]
+      [47.5960, -122.3310],
+      [47.5970, -122.3305],
+      [47.5980, -122.3300]
     ]
   },
   {
-    "id": "route_stadium_to_sodo",
-    "label": "Lumen Field to SODO Station",
+    "id": "route_king_street",
+    "label": "King Street Station",
+    "corridor": "king_street",
     "path": [
       [47.5952, -122.3316],
-      [47.5915, -122.3325],
-      [47.5813, -122.3278]
+      [47.5962, -122.3295],
+      [47.5975, -122.3285],
+      [47.5990, -122.3280]
+    ]
+  },
+  {
+    "id": "route_royal_brougham",
+    "label": "S Royal Brougham Way (eastbound)",
+    "corridor": "royal_brougham",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5945, -122.3310],
+      [47.5942, -122.3295],
+      [47.5940, -122.3270]
+    ]
+  },
+  {
+    "id": "route_4th_ave_s",
+    "label": "4th Ave S (northbound to Pioneer Sq)",
+    "corridor": "4th_ave_s",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5960, -122.3320],
+      [47.5975, -122.3330],
+      [47.5995, -122.3340],
+      [47.6010, -122.3345]
+    ]
+  },
+  {
+    "id": "route_occidental",
+    "label": "Occidental Ave pedestrian corridor",
+    "corridor": "occidental_ave",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5955, -122.3325],
+      [47.5960, -122.3335],
+      [47.5968, -122.3340]
+    ]
+  },
+  {
+    "id": "route_sodo",
+    "label": "S Atlantic St to SODO Station",
+    "corridor": "s_atlantic_st",
+    "path": [
+      [47.5952, -122.3316],
+      [47.5940, -122.3320],
+      [47.5925, -122.3310],
+      [47.5910, -122.3290],
+      [47.5890, -122.3278]
     ]
   }
 ]

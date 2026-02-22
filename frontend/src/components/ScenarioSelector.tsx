@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ScenarioMetadata } from './mockData';
+import { ScenarioMetadata } from './types';
 
 interface ScenarioSelectorProps {
   scenarios: ScenarioMetadata[];
@@ -71,9 +71,14 @@ export function ScenarioSelector({ scenarios, selectedScenario, onSelectScenario
               <div className="font-mono text-[7px] mb-0.5 opacity-70">
                 {String.fromCharCode(65 + index)}
               </div>
-              <div className="font-mono font-bold text-[9px] mb-1 leading-tight">
-                {scenario.name.split(' ')[0]}
+              <div className="font-mono font-bold text-[9px] mb-0.5 leading-tight">
+                {scenario.name.replace(/^Scenario [A-C]: /, '')}
               </div>
+              {isSelected && scenario.description && (
+                <div className="font-mono text-[6px] mb-0.5 opacity-60 leading-tight line-clamp-2">
+                  {scenario.description}
+                </div>
+              )}
               <div className={`font-mono text-[7px] font-bold ${
                 isSelected ? '' : 'text-slate-500'
               }`}>

@@ -1,46 +1,5 @@
-// Mock data following the SafeTransit data contract
-export interface GameState {
-  home: number;
-  away: number;
-  clock: string;
-  qtr: number;
-}
-
-export interface Hotspot {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  density_pct: number;
-  status: 'NORMAL' | 'ELEVATED' | 'CRITICAL';
-  forecasted_density?: number;
-  recommended_action?: string;
-}
-
-export interface TimelineMinute {
-  minute: number;
-  time_label: string;
-  game_state: GameState;
-  threat_score: number;
-  alert_message: string;
-  danger_routes: number[][][];
-  safe_routes: number[][][];
-  blurbs: Array<{ lat: number; lng: number; text: string }>;
-  hotspots: Hotspot[];
-}
-
-export interface ScenarioMetadata {
-  id: string;
-  name: string;
-  attendance: number;
-  description: string;
-  risk_level: string;
-}
-
-export interface ScenarioData {
-  scenario_metadata: ScenarioMetadata;
-  timeline: TimelineMinute[];
-}
+export type { GameState, Hotspot, TimelineMinute, ScenarioMetadata, ScenarioData } from './types';
+import type { GameState, Hotspot, TimelineMinute, ScenarioMetadata, ScenarioData } from './types';
 
 // Generate timeline data for a full 24 hours (1440 minutes)
 function generateTimeline(scenarioType: 'normal' | 'high_attendance' | 'blowout'): TimelineMinute[] {

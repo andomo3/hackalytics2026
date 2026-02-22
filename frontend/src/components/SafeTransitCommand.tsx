@@ -5,16 +5,18 @@ import { TimelineSlider } from './TimelineSlider';
 import { TacticalMap } from './TacticalMap';
 import { AlertPanel } from './AlertPanel';
 import { HotspotModal } from './HotspotModal';
-import { scenarios, Hotspot } from './mockData';
+import type { Hotspot } from './types';
+import { useScenarioData } from '../hooks/useScenarioData';
 
 export function SafeTransitCommand() {
+  const { scenarios, loading, error, source } = useScenarioData();
   const [selectedScenario, setSelectedScenario] = useState(0);
-  const [currentMinute, setCurrentMinute] = useState(1125); // Start at critical moment
+  const [currentMinute, setCurrentMinute] = useState(1125);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   
   const currentScenario = scenarios[selectedScenario];
-  const currentData = currentScenario.timeline[currentMinute];
+  const currentData = currentScenario?.timeline?.[currentMinute];
   
   // Auto-play functionality
   useEffect(() => {
@@ -32,12 +34,30 @@ export function SafeTransitCommand() {
   
   const handleScenarioChange = (index: number) => {
     setSelectedScenario(index);
-    // Reset to a key moment for each scenario
-    if (index === 0) setCurrentMinute(1140); // Normal game start
-    if (index === 1) setCurrentMinute(1200); // High attendance mid-game
-    if (index === 2) setCurrentMinute(1125); // Blowout critical moment
+    const keyMin = scenarios[index]?.scenario_metadata?.key_minute;
+    setCurrentMinute(keyMin ?? 1260);
   };
   
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+        <div className="font-mono text-cyan-400 text-sm animate-pulse">
+          LOADING SCENARIO DATA...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !currentData) {
+    return (
+      <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+        <div className="font-mono text-red-500 text-sm">
+          {error ?? 'NO DATA AVAILABLE'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full bg-slate-950 relative overflow-hidden">
       {/* CRT Effect - Full screen background */}
@@ -93,11 +113,13 @@ export function SafeTransitCommand() {
               {/* System Status */}
               <div className="flex items-center gap-1 font-mono text-[8px]">
                 <motion.div
-                  className="w-2 h-2 rounded-full bg-emerald-400"
+                  className={`w-2 h-2 rounded-full ${source === 'api' ? 'bg-emerald-400' : 'bg-amber-400'}`}
                   animate={{ opacity: [0.3, 1, 0.3] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                <span className="text-emerald-400">ONLINE</span>
+                <span className={source === 'api' ? 'text-emerald-400' : 'text-amber-400'}>
+                  {source === 'api' ? 'LIVE' : 'MOCK'}
+                </span>
               </div>
             </div>
           </div>
@@ -157,6 +179,9 @@ export function SafeTransitCommand() {
               alertMessage={currentData.alert_message}
               threatScore={currentData.threat_score}
               timeLabel={currentData.time_label}
+              corridorHotspots={[...currentData.hotspots]
+                .sort((a, b) => b.density_pct - a.density_pct)
+                .slice(0, 3)}
             />
           </motion.div>
         </div>
