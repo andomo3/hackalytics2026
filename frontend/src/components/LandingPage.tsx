@@ -85,8 +85,8 @@ function DotGrid() {
   );
 }
 
-/* ───── "What's New" style timeline entry ───── */
-function TimelineEntry({
+/* ───── horizontal timeline card ───── */
+function TimelineCard({
   label,
   tag,
   title,
@@ -102,30 +102,30 @@ function TimelineEntry({
   index: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-80px' });
+  const isInView = useInView(ref, { once: true, margin: '-40px' });
 
   return (
     <motion.div
       ref={ref}
-      className="grid gap-6"
+      className="flex flex-col flex-shrink-0"
       style={{
-        gridTemplateColumns: '140px 1px 1fr',
+        width: '340px',
         opacity: isInView ? 1 : 0,
-        transform: isInView ? 'translateY(0)' : 'translateY(24px)',
-        transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.1}s`,
+        transform: isInView ? 'translateY(0)' : 'translateY(20px)',
+        transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.08}s`,
       }}
     >
-      {/* Left: label + tag */}
-      <div className="text-right pt-1">
-        <div
+      {/* Top: label + tag */}
+      <div className="flex items-center gap-3 mb-4">
+        <span
           className="font-mono text-xs tracking-widest"
           style={{ color: '#64748b' }}
         >
           {label}
-        </div>
+        </span>
         {tag && (
-          <div
-            className="inline-block font-mono text-xs mt-2 px-2 py-0.5"
+          <span
+            className="font-mono text-xs px-2 py-0.5"
             style={{
               color: '#22d3ee',
               border: '1px solid rgba(34, 211, 238, 0.25)',
@@ -133,52 +133,61 @@ function TimelineEntry({
             }}
           >
             {tag}
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Center: vertical line + dot */}
-      <div className="relative flex flex-col items-center">
+      {/* Dot + line connector (above card) */}
+      <div className="flex items-center mb-5">
         <div
-          className="absolute top-2 rounded-full"
+          className="rounded-full flex-shrink-0"
           style={{
-            width: '7px',
-            height: '7px',
+            width: '9px',
+            height: '9px',
             background: '#22d3ee',
-            boxShadow: '0 0 8px rgba(34, 211, 238, 0.6)',
+            boxShadow: '0 0 10px rgba(34, 211, 238, 0.6)',
           }}
         />
         <div
-          className="w-px flex-1 mt-4"
-          style={{ background: 'rgba(34, 211, 238, 0.12)' }}
+          className="flex-1 h-px"
+          style={{ background: 'rgba(34, 211, 238, 0.15)' }}
         />
       </div>
 
-      {/* Right: content card */}
+      {/* Card body */}
       <div
-        className="pb-10"
+        className="flex-1 flex flex-col"
         style={{
-          background: 'rgba(2, 6, 23, 0.5)',
+          background: 'rgba(2, 6, 23, 0.6)',
           border: '1px solid rgba(34, 211, 238, 0.08)',
-          padding: '20px 24px',
+          padding: '24px',
+          transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.2)';
+          e.currentTarget.style.boxShadow = '0 0 30px rgba(34, 211, 238, 0.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.08)';
+          e.currentTarget.style.boxShadow = 'none';
         }}
       >
         <h3
-          className="font-mono text-sm font-bold tracking-wider mb-3"
+          className="font-mono text-sm font-bold tracking-wider mb-4"
           style={{ color: '#e2e8f0' }}
         >
           {title}
         </h3>
         {description && (
           <p
-            className="font-mono text-xs leading-relaxed mb-4"
+            className="font-mono text-xs leading-relaxed"
             style={{ color: '#94a3b8' }}
           >
             {description}
           </p>
         )}
         {items && (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {items.map((item) => (
               <li
                 key={item}
@@ -230,7 +239,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       items: [
         'Normal Game -- Standard 68K attendance egress pattern',
         'High Attendance -- Sold-out 72K+ with elevated crowd pressure',
-        'Q3 Blowout -- Early mass exit at the 90-min mark creating surge conditions',
+        'Q3 Blowout -- Early mass exit creating surge conditions',
       ],
     },
     {
@@ -240,7 +249,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       items: [
         'React 18 + Vite + TypeScript frontend',
         'Leaflet.js dark tactical map with real Seattle geography',
-        'Framer Motion for fluid transitions and animations',
+        'Framer Motion for fluid transitions',
         'FastAPI + SQLite backend with XGBoost models',
         'Pydantic AI routing agent for autonomous rerouting',
       ],
@@ -259,9 +268,11 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       className="relative w-full overflow-y-auto overflow-x-hidden"
       style={{ background: '#020617', height: '100%' }}
     >
-      {/* ===== HERO SECTION (full viewport) ===== */}
-      <div className="relative w-full flex flex-col items-center justify-center" style={{ minHeight: '100vh' }}>
-        {/* Dot grid background */}
+      {/* ===== HERO SECTION ===== */}
+      <div
+        className="relative w-full flex flex-col items-center justify-center"
+        style={{ minHeight: '100vh' }}
+      >
         <DotGrid />
 
         {/* Radial glow */}
@@ -273,20 +284,17 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             transform: 'translateX(-50%)',
             width: '700px',
             height: '500px',
-            background: 'radial-gradient(ellipse at center, rgba(34,211,238,0.06) 0%, transparent 70%)',
+            background:
+              'radial-gradient(ellipse at center, rgba(34,211,238,0.06) 0%, transparent 70%)',
             filter: 'blur(60px)',
           }}
         />
 
         {/* Hero content */}
         <div className="relative z-10 flex flex-col items-center">
-          {/* Main title */}
           <motion.h1
             className="font-mono font-bold text-center leading-none tracking-tight"
-            style={{
-              fontSize: 'clamp(4rem, 12vw, 9rem)',
-              color: '#f8fafc',
-            }}
+            style={{ fontSize: 'clamp(4rem, 12vw, 9rem)', color: '#f8fafc' }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
@@ -295,7 +303,6 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             <span style={{ color: '#22d3ee' }}>SHIELD</span>
           </motion.h1>
 
-          {/* CTA Button */}
           <motion.button
             onClick={onEnter}
             className="group font-mono text-sm font-bold tracking-wider flex items-center gap-3 transition-all mt-14"
@@ -306,7 +313,8 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               border: 'none',
             }}
             whileHover={{
-              boxShadow: '0 0 30px rgba(34, 211, 238, 0.5), 0 0 60px rgba(34, 211, 238, 0.2)',
+              boxShadow:
+                '0 0 30px rgba(34, 211, 238, 0.5), 0 0 60px rgba(34, 211, 238, 0.2)',
               scale: 1.02,
             }}
             whileTap={{ scale: 0.98 }}
@@ -315,7 +323,10 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             transition={{ delay: 0.7 }}
           >
             ENTER COMMAND CENTER
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            <ArrowRight
+              size={16}
+              className="transition-transform group-hover:translate-x-1"
+            />
           </motion.button>
         </div>
 
@@ -323,10 +334,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         <motion.button
           onClick={scrollToAbout}
           className="absolute font-mono text-xs tracking-widest flex flex-col items-center gap-2 transition-colors"
-          style={{
-            bottom: '40px',
-            color: '#475569',
-          }}
+          style={{ bottom: '40px', color: '#475569' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
@@ -342,14 +350,14 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         </motion.button>
       </div>
 
-      {/* ===== ABOUT / "WHAT'S NEW" SECTION ===== */}
+      {/* ===== ABOUT -- HORIZONTAL SCROLLABLE TIMELINE ===== */}
       <div
         ref={aboutRef}
         className="relative w-full"
         style={{ background: '#020617' }}
       >
         {/* Section header */}
-        <div className="flex flex-col items-center pt-24 pb-16">
+        <div className="flex flex-col items-center pt-24 pb-12">
           <motion.div
             className="font-mono text-xs tracking-widest mb-6"
             style={{ color: '#475569' }}
@@ -360,7 +368,6 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             ABOUT THE PROJECT
           </motion.div>
           <div
-            className="mx-auto"
             style={{
               width: '40px',
               height: '1px',
@@ -369,23 +376,58 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           />
         </div>
 
-        {/* Timeline entries */}
+        {/* Horizontal scroll container */}
         <div
-          className="mx-auto px-6 pb-32"
-          style={{ maxWidth: '720px' }}
+          className="relative overflow-x-auto pb-20"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(34, 211, 238, 0.2) transparent',
+          }}
         >
-          {timelineEntries.map((entry, i) => (
-            <TimelineEntry
-              key={entry.label}
-              label={entry.label}
-              tag={entry.tag}
-              title={entry.title}
-              description={entry.description}
-              items={entry.items}
-              index={i}
-            />
-          ))}
+          {/* Horizontal line running behind all cards */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              top: '68px',
+              left: '0',
+              right: '0',
+              height: '1px',
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.12) 10%, rgba(34, 211, 238, 0.12) 90%, transparent 100%)',
+            }}
+          />
+
+          <div
+            className="flex gap-8 px-12"
+            style={{
+              paddingRight: '80px',
+              width: 'max-content',
+            }}
+          >
+            {timelineEntries.map((entry, i) => (
+              <TimelineCard
+                key={entry.label}
+                label={entry.label}
+                tag={entry.tag}
+                title={entry.title}
+                description={entry.description}
+                items={entry.items}
+                index={i}
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Scroll hint */}
+        <motion.div
+          className="flex justify-center pb-16 font-mono text-xs tracking-widest"
+          style={{ color: '#334155' }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          {'DRAG OR SCROLL HORIZONTALLY -->'}
+        </motion.div>
 
         {/* Bottom separator */}
         <div className="flex justify-center pb-16">
@@ -393,7 +435,8 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             style={{
               width: '80px',
               height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent)',
+              background:
+                'linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent)',
             }}
           />
         </div>
