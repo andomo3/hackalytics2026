@@ -16,6 +16,12 @@ export interface Hotspot {
   recommended_action?: string;
 }
 
+export interface TransitStatus {
+  stadium_station?: string;
+  king_st?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Intersection {
   id: string;
   name: string;
@@ -31,6 +37,7 @@ export interface Intersection {
 export interface TimelineMinute {
   minute: number;
   time_label: string;
+  timestamp_label?: string;
   game_state: GameState;
   threat_score: number;
   alert_message: string;
@@ -41,6 +48,12 @@ export interface TimelineMinute {
   intersections?: Intersection[];
   severity?: number;
   estimated_crowd_volume?: number;
+  predicted_surge_velocity?: number;
+  critical_capacity_threshold?: number;
+  platform_utilization_pct?: number;
+  transit_status?: TransitStatus;
+  emergency_corridors?: number[][][];
+  ai_log_lines?: string[];
   transit_load?: Record<string, number>;
   pedestrian_volume?: Record<string, number>;
 }

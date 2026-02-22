@@ -24,6 +24,21 @@ docker compose up --build
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
 
+## Optional Trained Model
+
+If you receive `egress_model.joblib` from a teammate, place it in either:
+
+- `backend/app/ml/egress_model.joblib`
+- `exports/egress_model.joblib`
+
+Or set an explicit path in `.env`:
+
+```powershell
+EGRESS_MODEL_PATH=C:\full\path\to\egress_model.joblib
+```
+
+The pipeline auto-detects the model; otherwise it falls back to heuristics.
+
 ## Run Locally
 
 ### Backend

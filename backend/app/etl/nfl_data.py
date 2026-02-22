@@ -6,7 +6,20 @@ from typing import Any
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-NFL_CSV = PROJECT_ROOT / "mainData" / "NFL Play by Play 2009-2018 (v5).csv"
+
+
+def _resolve_data_file(filename: str) -> Path:
+    candidates = [
+        PROJECT_ROOT / "mainData" / filename,
+        PROJECT_ROOT / "exports" / filename,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+NFL_CSV = _resolve_data_file("NFL Play by Play 2009-2018 (v5).csv")
 
 # ---------------------------------------------------------------------------
 # Game selection — three SEA home games matching our scenario profiles

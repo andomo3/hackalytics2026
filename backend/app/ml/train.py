@@ -24,7 +24,20 @@ from xgboost import XGBRegressor
 from app.ml.features import GAME_FEATURES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-NFL_CSV = PROJECT_ROOT / "mainData" / "NFL Play by Play 2009-2018 (v5).csv"
+
+
+def _resolve_data_file(filename: str) -> Path:
+    candidates = [
+        PROJECT_ROOT / "mainData" / filename,
+        PROJECT_ROOT / "exports" / filename,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+NFL_CSV = _resolve_data_file("NFL Play by Play 2009-2018 (v5).csv")
 MODEL_DIR = Path(__file__).resolve().parent
 MODEL_PATH = MODEL_DIR / "egress_model.joblib"
 

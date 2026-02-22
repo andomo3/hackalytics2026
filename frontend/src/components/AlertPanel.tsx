@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
+import { useEffect, useMemo, useState } from 'react';
 import { GameState } from './types';
 
 type AlertHistoryEntry = {
@@ -16,6 +17,7 @@ interface AlertPanelProps {
   severity?: number;
   crowdVolume?: number;
   alertHistory?: AlertHistoryEntry[];
+  aiLogLines?: string[];
 }
 
 function severityLabel(severity: number): string {
@@ -34,6 +36,7 @@ export function AlertPanel({
   severity,
   crowdVolume,
   alertHistory = [],
+  aiLogLines = [],
 }: AlertPanelProps) {
   const getThreatLevel = () => {
     if (threatScore >= 0.8) return { label: 'CRITICAL', color: 'text-red-500', bg: 'bg-red-500' };
@@ -44,6 +47,41 @@ export function AlertPanel({
 
   const threat = getThreatLevel();
   const resolvedSeverity = severity ?? (threatScore >= 0.8 ? 5 : threatScore >= 0.6 ? 4 : threatScore >= 0.4 ? 3 : threatScore >= 0.2 ? 2 : 1);
+  const defaultLines = useMemo(
+    () => (aiLogLines.length > 0 ? aiLogLines : [alertMessage]),
+    [aiLogLines, alertMessage]
+  );
+  const [typedLines, setTypedLines] = useState<string[]>(defaultLines.map(() => ''));
+
+  useEffect(() => {
+    const targetLines = defaultLines;
+    setTypedLines(targetLines.map(() => ''));
+    if (targetLines.length === 0) {
+      return;
+    }
+
+    let lineIndex = 0;
+    let charIndex = 0;
+    const lineBuffers = targetLines.map(() => '');
+
+    const timer = window.setInterval(() => {
+      const currentLine = targetLines[lineIndex] ?? '';
+      if (charIndex < currentLine.length) {
+        lineBuffers[lineIndex] = currentLine.slice(0, charIndex + 1);
+        charIndex += 1;
+        setTypedLines([...lineBuffers]);
+        return;
+      }
+
+      lineIndex += 1;
+      charIndex = 0;
+      if (lineIndex >= targetLines.length) {
+        window.clearInterval(timer);
+      }
+    }, 18);
+
+    return () => window.clearInterval(timer);
+  }, [defaultLines]);
 
   return (
     <motion.div
@@ -157,10 +195,15 @@ export function AlertPanel({
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="text-xs leading-tight">
-                <span className={`${threat.color} font-bold`}>
-                  {alertMessage.length > 160 ? alertMessage.substring(0, 160) + '...' : alertMessage}
-                </span>
+              <div className="text-xs leading-tight space-y-1">
+                {typedLines.map((line, idx) => (
+                  <div key={`typed-${idx}`}>
+                    <span className={`${threat.color} font-bold`}>{'> '}</span>
+                    <span className={`${threat.color} font-bold`}>
+                      {line.length > 160 ? `${line.substring(0, 160)}...` : line}
+                    </span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </AnimatePresence>

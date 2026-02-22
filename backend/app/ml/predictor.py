@@ -1,4 +1,4 @@
-"""Egress threat predictor — XGBoost with heuristic fallback.
+"""Egress threat predictor - XGBoost with heuristic fallback.
 
 Loads the trained model bundle from egress_model.joblib (produced by train.py).
 If the file is missing or corrupt, falls back to the original heuristic so the
@@ -8,6 +8,7 @@ rest of the pipeline never breaks.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -17,11 +18,53 @@ from app.ml.features import make_feature_vector
 
 log = logging.getLogger(__name__)
 
-_MODEL_PATH = Path(__file__).resolve().parent / "egress_model.joblib"
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "egress_model.joblib"
 _BUNDLE: dict[str, Any] | None = None
 _LOADED = False
 
 STADIUM_CAPACITY = 68_000
+
+
+def _candidate_model_paths() -> list[Path]:
+    """Return candidate locations for the trained model artifact."""
+    candidates: list[Path] = []
+
+    env_path = os.getenv("EGRESS_MODEL_PATH", "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+
+    candidates.extend([
+        _DEFAULT_MODEL_PATH,
+        _PROJECT_ROOT / "exports" / "egress_model.joblib",
+        _PROJECT_ROOT / "mainData" / "egress_model.joblib",
+        Path("/mainData/egress_model.joblib"),
+        Path("/mainData/models/egress_model.joblib"),
+    ])
+
+    # Preserve order while removing duplicates.
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(path)
+    return deduped
+
+
+def model_search_paths() -> list[Path]:
+    """Public helper for scripts to display where model lookup happens."""
+    return _candidate_model_paths()
+
+
+def resolve_model_path() -> Path | None:
+    """Resolve the first existing model path from known candidates."""
+    for path in _candidate_model_paths():
+        if path.exists():
+            return path
+    return None
 
 
 def _ensure_model() -> dict[str, Any] | None:
@@ -29,17 +72,26 @@ def _ensure_model() -> dict[str, Any] | None:
     global _BUNDLE, _LOADED
     if _LOADED:
         return _BUNDLE
+
     _LOADED = True
-    if not _MODEL_PATH.exists():
-        log.warning("No trained model at %s — using heuristic fallback", _MODEL_PATH)
+    model_path = resolve_model_path()
+    if model_path is None:
+        searched = ", ".join(str(p) for p in _candidate_model_paths())
+        log.warning(
+            "No trained model found. Searched: %s. Using heuristic fallback.",
+            searched,
+        )
         return None
+
     try:
         import joblib
-        _BUNDLE = joblib.load(_MODEL_PATH)
-        log.info("Loaded XGBoost model from %s", _MODEL_PATH)
+
+        _BUNDLE = joblib.load(model_path)
+        log.info("Loaded XGBoost model from %s", model_path)
     except Exception:
-        log.exception("Failed to load model — using heuristic fallback")
+        log.exception("Failed to load model from %s. Using heuristic fallback.", model_path)
         _BUNDLE = None
+
     return _BUNDLE
 
 

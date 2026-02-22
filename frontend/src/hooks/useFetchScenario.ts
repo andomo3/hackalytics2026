@@ -25,11 +25,20 @@ type ApiTimelineMinute = {
   pedestrian_volume?: Record<string, number> | null;
   game_state?: Record<string, unknown> | null;
   egress_threat_score?: number | null;
+  threat_score?: number | null;
   estimated_crowd_volume?: number | null;
+  predicted_surge_velocity?: number | null;
+  critical_capacity_threshold?: number | null;
+  platform_utilization_pct?: number | null;
+  transit_status?: Record<string, string> | null;
   danger_routes?: unknown;
   safe_routes?: unknown;
+  emergency_corridors?: unknown;
+  ai_log_lines?: string[] | null;
   alert_message?: string | null;
   severity?: number | null;
+  time_label?: string | null;
+  timestamp_label?: string | null;
 };
 
 type ApiScenarioTimeseries = {
@@ -299,13 +308,17 @@ function normalizeGameState(rawState: Record<string, unknown> | null | undefined
 
 function normalizeTimelineMinute(rawMinute: ApiTimelineMinute): TimelineMinute {
   const minute = Math.max(0, Math.min(1439, asNumber(rawMinute.minute, 0)));
-  const threatScore = Math.max(0, Math.min(1, asNumber(rawMinute.egress_threat_score, 0)));
+  const threatScore = Math.max(
+    0,
+    Math.min(1, asNumber(rawMinute.threat_score ?? rawMinute.egress_threat_score, 0))
+  );
   const severity = asNumber(rawMinute.severity, toSeverity(threatScore));
   const transitLoad = (rawMinute.transit_load ?? {}) as Record<string, number>;
   const pedestrianVolume = (rawMinute.pedestrian_volume ?? {}) as Record<string, number>;
 
   const dangerRoutes = normalizeRoutes(rawMinute.danger_routes);
   const safeRoutes = normalizeRoutes(rawMinute.safe_routes);
+  const emergencyCorridors = normalizeRoutes(rawMinute.emergency_corridors);
 
   const hotSpots = buildHotspots(transitLoad, threatScore);
   const blurbs = buildBlurbs(transitLoad, hotSpots);
@@ -321,16 +334,32 @@ function normalizeTimelineMinute(rawMinute: ApiTimelineMinute): TimelineMinute {
 
   return {
     minute,
-    time_label: minuteToLabel(minute),
+    time_label:
+      rawMinute.time_label ??
+      rawMinute.timestamp_label ??
+      minuteToLabel(minute),
+    timestamp_label: rawMinute.timestamp_label ?? rawMinute.time_label ?? minuteToLabel(minute),
     game_state: normalizeGameState(rawMinute.game_state),
     threat_score: threatScore,
     alert_message: rawMinute.alert_message?.trim() || toDefaultAlert(threatScore),
     danger_routes: resolvedDangerRoutes,
     safe_routes: resolvedSafeRoutes,
+    emergency_corridors: emergencyCorridors,
+    transit_status: (rawMinute.transit_status ?? {}) as Record<string, string>,
+    ai_log_lines: rawMinute.ai_log_lines ?? [],
     blurbs,
     hotspots: hotSpots,
     severity,
     estimated_crowd_volume: asNumber(rawMinute.estimated_crowd_volume, 0),
+    predicted_surge_velocity: asNumber(
+      rawMinute.predicted_surge_velocity,
+      Math.round(25 + threatScore * 150)
+    ),
+    critical_capacity_threshold: asNumber(rawMinute.critical_capacity_threshold, 133),
+    platform_utilization_pct: asNumber(
+      rawMinute.platform_utilization_pct,
+      Math.round((asNumber(rawMinute.predicted_surge_velocity, 25 + threatScore * 150) / 133) * 100)
+    ),
     transit_load: transitLoad,
     pedestrian_volume: pedestrianVolume,
   };

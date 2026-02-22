@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { MapContainer, TileLayer, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Hotspot, Intersection } from './mockData';
+import { Hotspot, Intersection, TransitStatus } from './mockData';
 
 // Lumen Field center coordinates
 const LUMEN_FIELD: [number, number] = [47.5952, -122.3316];
@@ -12,6 +12,8 @@ const DEFAULT_ZOOM = 15;
 interface TacticalMapProps {
   dangerRoutes: number[][][];
   safeRoutes: number[][][];
+  emergencyCorridors?: number[][][];
+  transitStatus?: TransitStatus;
   blurbs: Array<{ lat: number; lng: number; text: string }>;
   hotspots: Hotspot[];
   intersections: Intersection[];
@@ -334,9 +336,11 @@ function IntersectionHeatLayer({
 /** Hotspot markers rendered as Leaflet DOM overlays for click handling */
 function HotspotMarkers({
   hotspots,
+  transitStatus,
   onHotspotClick,
 }: {
   hotspots: Hotspot[];
+  transitStatus?: TransitStatus;
   onHotspotClick: (h: Hotspot) => void;
 }) {
   const map = useMap();
@@ -346,9 +350,19 @@ function HotspotMarkers({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
+    const stadiumLockdown = transitStatus?.stadium_station === 'LOCKED_DOWN';
+    let hasStadiumMarker = false;
+
     hotspots.forEach((hotspot) => {
+      const isStadiumHotspot =
+        hotspot.id.toLowerCase().includes('stadium') ||
+        hotspot.name.toLowerCase().includes('stadium');
+      if (isStadiumHotspot) {
+        hasStadiumMarker = true;
+      }
+      const lockedDownHotspot = stadiumLockdown && isStadiumHotspot;
       const size = 24 + Math.pow(Math.max(0, (hotspot.density_pct - 50) / 70), 1.5) * 40;
-      const isCritical = hotspot.status === 'CRITICAL';
+      const isCritical = hotspot.status === 'CRITICAL' || lockedDownHotspot;
       const colors = hotspot.density_pct > 90
         ? { fill: '#ef4444', stroke: '#dc2626', shadow: 'rgba(239,68,68,0.7)' }
         : hotspot.density_pct > 70
@@ -364,15 +378,16 @@ function HotspotMarkers({
                 position:absolute;top:50%;left:50%;
                 transform:translate(-50%,-50%);
                 width:${size}px;height:${size}px;border-radius:50%;
-                background:${colors.fill};border:2px solid ${colors.stroke};
+                background:${lockedDownHotspot ? 'rgba(127,29,29,0.92)' : colors.fill};
+                border:2px solid ${lockedDownHotspot ? '#ef4444' : colors.stroke};
                 --pulse-color:${colors.shadow};
                 display:flex;align-items:center;justify-content:center;
               ">
                 <span style="
-                  font-family:ui-monospace,monospace;font-size:${size > 30 ? '13px' : '11px'};
-                  font-weight:700;color:#000;
+                  font-family:ui-monospace,monospace;font-size:${lockedDownHotspot ? (size > 30 ? '20px' : '16px') : (size > 30 ? '13px' : '11px')};
+                  font-weight:700;color:${lockedDownHotspot ? '#fee2e2' : '#000'};
                   text-shadow:0 0 4px rgba(255,255,255,0.5);pointer-events:none;
-                ">${hotspot.density_pct}%</span>
+                ">${lockedDownHotspot ? '[ X ]' : `${hotspot.density_pct}%`}</span>
               </div>
               ${isCritical ? `
                 <div class="hotspot-ring" style="
@@ -395,11 +410,39 @@ function HotspotMarkers({
       markersRef.current.push(marker);
     });
 
+    if (stadiumLockdown && !hasStadiumMarker) {
+      const lockMarker = L.marker([47.598, -122.33], {
+        icon: L.divIcon({
+          className: '',
+          html: `
+            <div style="position:relative;width:72px;height:72px;cursor:crosshair;">
+              <div style="
+                position:absolute;top:50%;left:50%;
+                transform:translate(-50%,-50%);
+                width:72px;height:72px;border-radius:50%;
+                background:rgba(127,29,29,0.92);
+                border:3px solid #ef4444;
+                box-shadow:0 0 20px rgba(239,68,68,0.9);
+                display:flex;align-items:center;justify-content:center;
+                color:#fee2e2;font-family:ui-monospace,monospace;font-size:20px;font-weight:700;
+              ">[ X ]</div>
+            </div>
+          `,
+          iconSize: [72, 72],
+          iconAnchor: [36, 36],
+        }),
+        interactive: false,
+        zIndexOffset: 1200,
+      });
+      lockMarker.addTo(map);
+      markersRef.current.push(lockMarker);
+    }
+
     return () => {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
     };
-  }, [map, hotspots, onHotspotClick]);
+  }, [map, hotspots, transitStatus, onHotspotClick]);
 
   return null;
 }
@@ -470,6 +513,8 @@ function BlurbMarkers({
 export function TacticalMap({
   dangerRoutes,
   safeRoutes,
+  emergencyCorridors = [],
+  transitStatus,
   blurbs,
   hotspots,
   intersections,
@@ -485,6 +530,10 @@ export function TacticalMap({
   const dangerLatLngs = useMemo(
     () => dangerRoutes.map((route) => route.map((pt) => [pt[0], pt[1]] as [number, number])),
     [dangerRoutes]
+  );
+  const emergencyLatLngs = useMemo(
+    () => emergencyCorridors.map((route) => route.map((pt) => [pt[0], pt[1]] as [number, number])),
+    [emergencyCorridors]
   );
 
   const handleZoomChange = useCallback((z: number) => setZoom(z), []);
@@ -527,6 +576,9 @@ export function TacticalMap({
             )}
             {dangerRoutes.length > 0 && (
               <span style={{ color: '#ef4444' }}>{'DANGER:'}{dangerRoutes.length}</span>
+            )}
+            {emergencyCorridors.length > 0 && (
+              <span style={{ color: '#60a5fa' }}>{'EMS:'}{emergencyCorridors.length}</span>
             )}
             <span style={{ color: '#22d3ee' }}>{'INT:'}{visibleCount}/{intersections.length}</span>
             {criticalCount > 0 && (
@@ -592,12 +644,49 @@ export function TacticalMap({
           />
         ))}
 
+        {/* EMS Corridors */}
+        {emergencyLatLngs.map((positions, i) => (
+          <Polyline
+            key={`ems-base-${i}`}
+            positions={positions}
+            pathOptions={{ color: '#2563eb', weight: 8, opacity: 0.95, className: 'ems-route' }}
+          />
+        ))}
+        {emergencyLatLngs.map((positions, i) => (
+          <Polyline
+            key={`ems-pulse-${i}`}
+            positions={positions}
+            pathOptions={{
+              color: '#f8fafc',
+              weight: 4,
+              opacity: 0.9,
+              dashArray: '10 10',
+              className: 'ems-route-pulse',
+            }}
+          />
+        ))}
+
         {/* Hotspot markers -- on top */}
-        <HotspotMarkers hotspots={hotspots} onHotspotClick={onHotspotClick} />
+        <HotspotMarkers
+          hotspots={hotspots}
+          transitStatus={transitStatus}
+          onHotspotClick={onHotspotClick}
+        />
 
         {/* Blurb alert markers */}
         <BlurbMarkers blurbs={blurbs} />
       </MapContainer>
+
+      <style>{`
+        .ems-route-pulse {
+          animation: emsPulse 0.9s ease-in-out infinite;
+        }
+        @keyframes emsPulse {
+          0% { opacity: 0.35; }
+          50% { opacity: 1; }
+          100% { opacity: 0.35; }
+        }
+      `}</style>
 
       {/* Scanline effect overlay */}
       <div
