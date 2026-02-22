@@ -1,6 +1,6 @@
-import { motion, useMotionValue, useTransform, animate } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
-import { Shield, MapPin, Zap, Radio, ArrowRight } from 'lucide-react';
+import { motion, useInView } from 'motion/react';
+import { useEffect, useRef } from 'react';
+import { ArrowRight, ArrowDown } from 'lucide-react';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -85,109 +85,112 @@ function DotGrid() {
   );
 }
 
-/* ───── animated counter ───── */
-function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (v) => Math.round(v));
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    const controls = animate(count, target, { duration: 2, ease: 'easeOut' });
-    const unsub = rounded.on('change', (v) => setDisplay(v));
-    return () => {
-      controls.stop();
-      unsub();
-    };
-  }, [target, count, rounded]);
-
-  return (
-    <span>
-      {display.toLocaleString()}
-      {suffix}
-    </span>
-  );
-}
-
-/* ───── typing text effect ───── */
-function TypedText({ text, className, delay = 0 }: { text: string; className?: string; delay?: number }) {
-  const [displayed, setDisplayed] = useState('');
-
-  useEffect(() => {
-    let i = 0;
-    const timeout = setTimeout(() => {
-      const interval = setInterval(() => {
-        if (i < text.length) {
-          setDisplayed(text.slice(0, i + 1));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 40);
-      return () => clearInterval(interval);
-    }, delay);
-    return () => clearTimeout(timeout);
-  }, [text, delay]);
-
-  return (
-    <span className={className}>
-      {displayed}
-      <span className="animate-pulse" style={{ opacity: displayed.length < text.length ? 1 : 0 }}>
-        {'_'}
-      </span>
-    </span>
-  );
-}
-
-/* ───── feature card ───── */
-function FeatureCard({
-  icon,
+/* ───── "What's New" style timeline entry ───── */
+function TimelineEntry({
+  label,
+  tag,
   title,
   description,
+  items,
   index,
 }: {
-  icon: React.ReactNode;
+  label: string;
+  tag?: string;
   title: string;
-  description: string;
+  description?: string;
+  items?: string[];
   index: number;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px' });
+
   return (
     <motion.div
-      className="group relative flex flex-col gap-5 p-7"
+      ref={ref}
+      className="grid gap-6"
       style={{
-        background: 'rgba(2, 6, 23, 0.6)',
-        border: '1px solid rgba(34, 211, 238, 0.12)',
-        backdropFilter: 'blur(12px)',
-      }}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.2 + index * 0.15, duration: 0.6 }}
-      whileHover={{
-        borderColor: 'rgba(34, 211, 238, 0.4)',
-        background: 'rgba(2, 6, 23, 0.8)',
+        gridTemplateColumns: '140px 1px 1fr',
+        opacity: isInView ? 1 : 0,
+        transform: isInView ? 'translateY(0)' : 'translateY(24px)',
+        transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.1}s`,
       }}
     >
+      {/* Left: label + tag */}
+      <div className="text-right pt-1">
+        <div
+          className="font-mono text-xs tracking-widest"
+          style={{ color: '#64748b' }}
+        >
+          {label}
+        </div>
+        {tag && (
+          <div
+            className="inline-block font-mono text-xs mt-2 px-2 py-0.5"
+            style={{
+              color: '#22d3ee',
+              border: '1px solid rgba(34, 211, 238, 0.25)',
+              background: 'rgba(34, 211, 238, 0.06)',
+            }}
+          >
+            {tag}
+          </div>
+        )}
+      </div>
+
+      {/* Center: vertical line + dot */}
+      <div className="relative flex flex-col items-center">
+        <div
+          className="absolute top-2 rounded-full"
+          style={{
+            width: '7px',
+            height: '7px',
+            background: '#22d3ee',
+            boxShadow: '0 0 8px rgba(34, 211, 238, 0.6)',
+          }}
+        />
+        <div
+          className="w-px flex-1 mt-4"
+          style={{ background: 'rgba(34, 211, 238, 0.12)' }}
+        />
+      </div>
+
+      {/* Right: content card */}
       <div
-        className="flex items-center justify-center"
+        className="pb-10"
         style={{
-          width: '40px',
-          height: '40px',
-          background: 'rgba(34, 211, 238, 0.08)',
-          border: '1px solid rgba(34, 211, 238, 0.2)',
-          color: '#22d3ee',
+          background: 'rgba(2, 6, 23, 0.5)',
+          border: '1px solid rgba(34, 211, 238, 0.08)',
+          padding: '20px 24px',
         }}
       >
-        {icon}
-      </div>
-      <div>
         <h3
-          className="font-mono text-sm font-bold tracking-wider mb-2"
+          className="font-mono text-sm font-bold tracking-wider mb-3"
           style={{ color: '#e2e8f0' }}
         >
           {title}
         </h3>
-        <p className="font-mono text-xs leading-relaxed" style={{ color: '#64748b' }}>
-          {description}
-        </p>
+        {description && (
+          <p
+            className="font-mono text-xs leading-relaxed mb-4"
+            style={{ color: '#94a3b8' }}
+          >
+            {description}
+          </p>
+        )}
+        {items && (
+          <ul className="flex flex-col gap-2">
+            {items.map((item) => (
+              <li
+                key={item}
+                className="font-mono text-xs flex items-start gap-2"
+                style={{ color: '#64748b' }}
+              >
+                <span style={{ color: '#22d3ee', marginTop: '2px' }}>{'>'}</span>
+                <span className="leading-relaxed">{item}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </motion.div>
   );
@@ -195,188 +198,206 @@ function FeatureCard({
 
 /* ───── main landing page ───── */
 export function LandingPage({ onEnter }: LandingPageProps) {
-  const features = [
+  const aboutRef = useRef<HTMLDivElement>(null);
+
+  const scrollToAbout = () => {
+    aboutRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const timelineEntries = [
     {
-      icon: <Shield size={20} />,
-      title: 'AI THREAT DETECTION',
-      description: 'XGBoost-powered models predict crowd density surges up to 30 minutes before they become dangerous.',
+      label: 'THE PROBLEM',
+      tag: 'WHY',
+      title: 'MASS EGRESS IS UNPREDICTABLE',
+      description:
+        'When 72,000 fans exit a World Cup match simultaneously, crowd density surges create life-threatening conditions at key intersections. Traditional crowd management relies on static plans that cannot adapt in real-time.',
     },
     {
-      icon: <MapPin size={20} />,
-      title: 'REAL-TIME MAPPING',
-      description: '40+ intersection heat markers with live clustering. Zoom-adaptive visibility filters critical zones.',
+      label: 'OUR APPROACH',
+      tag: 'HOW',
+      title: 'AI-POWERED PREDICTION + ROUTING',
+      items: [
+        'XGBoost models trained on Seattle traffic data predict crowd density 30 min ahead',
+        'Pydantic AI agents generate real-time rerouting recommendations',
+        '40+ intersection sensors with heat-based busyness scoring',
+        'Zoom-adaptive marker clustering for multi-scale awareness',
+      ],
     },
     {
-      icon: <Zap size={20} />,
-      title: 'SMART ROUTING',
-      description: 'Autonomous rerouting algorithms redirect pedestrian flow away from danger corridors in real-time.',
+      label: 'SCENARIOS',
+      tag: 'SIMULATE',
+      title: 'THREE STRESS-TEST MODES',
+      items: [
+        'Normal Game -- Standard 68K attendance egress pattern',
+        'High Attendance -- Sold-out 72K+ with elevated crowd pressure',
+        'Q3 Blowout -- Early mass exit at the 90-min mark creating surge conditions',
+      ],
     },
     {
-      icon: <Radio size={20} />,
-      title: 'SCENARIO SIMULATION',
-      description: 'Stress-test 3 crowd scenarios: normal egress, high attendance, and Q3 blowout surge events.',
+      label: 'TECH STACK',
+      tag: 'BUILD',
+      title: 'FULL-STACK ARCHITECTURE',
+      items: [
+        'React 18 + Vite + TypeScript frontend',
+        'Leaflet.js dark tactical map with real Seattle geography',
+        'Framer Motion for fluid transitions and animations',
+        'FastAPI + SQLite backend with XGBoost models',
+        'Pydantic AI routing agent for autonomous rerouting',
+      ],
+    },
+    {
+      label: 'HACKLYTICS',
+      tag: '2026',
+      title: 'BEST AI FOR HUMAN SAFETY',
+      description:
+        'Built for the Hacklytics 2026 hackathon at Georgia Tech. CrowdShield demonstrates how predictive AI and real-time spatial intelligence can transform crowd safety for the largest sporting events on earth.',
     },
   ];
 
   return (
     <div
-      className="relative w-full min-h-screen flex flex-col overflow-hidden"
-      style={{ background: '#020617' }}
+      className="relative w-full overflow-y-auto overflow-x-hidden"
+      style={{ background: '#020617', height: '100%' }}
     >
-      {/* Dot grid background */}
-      <DotGrid />
+      {/* ===== HERO SECTION (full viewport) ===== */}
+      <div className="relative w-full flex flex-col items-center justify-center" style={{ minHeight: '100vh' }}>
+        {/* Dot grid background */}
+        <DotGrid />
 
-      {/* Radial glow behind hero */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: '20%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '800px',
-          height: '600px',
-          background: 'radial-gradient(ellipse at center, rgba(34,211,238,0.06) 0%, transparent 70%)',
-          filter: 'blur(60px)',
-        }}
-      />
-
-      {/* ===== HERO SECTION ===== */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
-        {/* Status badge */}
-        <motion.div
-          className="font-mono text-xs tracking-widest mb-8 flex items-center gap-2"
+        {/* Radial glow */}
+        <div
+          className="absolute pointer-events-none"
           style={{
-            color: '#22d3ee',
-            background: 'rgba(34, 211, 238, 0.06)',
-            border: '1px solid rgba(34, 211, 238, 0.15)',
-            padding: '6px 16px',
+            top: '30%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '700px',
+            height: '500px',
+            background: 'radial-gradient(ellipse at center, rgba(34,211,238,0.06) 0%, transparent 70%)',
+            filter: 'blur(60px)',
           }}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <span
-            className="inline-block rounded-full"
+        />
+
+        {/* Hero content */}
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Main title */}
+          <motion.h1
+            className="font-mono font-bold text-center leading-none tracking-tight"
             style={{
-              width: '6px',
-              height: '6px',
-              background: '#22d3ee',
-              boxShadow: '0 0 8px #22d3ee',
-              animation: 'pulse 2s ease-in-out infinite',
+              fontSize: 'clamp(4rem, 12vw, 9rem)',
+              color: '#f8fafc',
             }}
-          />
-          HACKLYTICS 2026 // BEST AI FOR HUMAN SAFETY
-        </motion.div>
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            CROWD
+            <span style={{ color: '#22d3ee' }}>SHIELD</span>
+          </motion.h1>
 
-        {/* Main title */}
-        <motion.h1
-          className="font-mono font-bold text-center leading-none tracking-tight"
-          style={{
-            fontSize: 'clamp(3.5rem, 10vw, 8rem)',
-            color: '#f8fafc',
-          }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-        >
-          CROWD
-          <span style={{ color: '#22d3ee' }}>SHIELD</span>
-        </motion.h1>
+          {/* CTA Button */}
+          <motion.button
+            onClick={onEnter}
+            className="group font-mono text-sm font-bold tracking-wider flex items-center gap-3 transition-all mt-14"
+            style={{
+              padding: '16px 40px',
+              color: '#020617',
+              background: '#22d3ee',
+              border: 'none',
+            }}
+            whileHover={{
+              boxShadow: '0 0 30px rgba(34, 211, 238, 0.5), 0 0 60px rgba(34, 211, 238, 0.2)',
+              scale: 1.02,
+            }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            ENTER COMMAND CENTER
+            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          </motion.button>
+        </div>
 
-        {/* Subtitle with typing effect */}
-        <motion.div
-          className="mt-10 font-mono text-center"
-          style={{ maxWidth: '600px' }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          <TypedText
-            text="AI-powered crowd safety intelligence for FIFA World Cup 2026"
-            className="text-base leading-relaxed"
-            delay={1000}
-          />
-          <style>{`
-            .animate-pulse { animation: pulse 1s step-end infinite; }
-            @keyframes pulse { 50% { opacity: 0; } }
-          `}</style>
-        </motion.div>
-
-        {/* Stats row */}
-        <motion.div
-          className="flex items-center gap-12 mt-14 font-mono"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.0 }}
-        >
-          {[
-            { value: 72000, suffix: '+', label: 'CROWD CAPACITY' },
-            { value: 40, suffix: '', label: 'INTERSECTIONS' },
-            { value: 1440, suffix: '', label: 'TIMELINE MINUTES' },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div
-                className="text-2xl font-bold"
-                style={{ color: '#22d3ee' }}
-              >
-                <AnimatedNumber target={stat.value} suffix={stat.suffix} />
-              </div>
-              <div className="text-xs mt-2" style={{ color: '#475569', letterSpacing: '0.1em' }}>
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* CTA Button */}
+        {/* Scroll indicator */}
         <motion.button
-          onClick={onEnter}
-          className="group mt-16 font-mono text-sm font-bold tracking-wider flex items-center gap-3 transition-all"
+          onClick={scrollToAbout}
+          className="absolute font-mono text-xs tracking-widest flex flex-col items-center gap-2 transition-colors"
           style={{
-            padding: '14px 32px',
-            color: '#020617',
-            background: '#22d3ee',
-            border: 'none',
+            bottom: '40px',
+            color: '#475569',
           }}
-          whileHover={{
-            boxShadow: '0 0 30px rgba(34, 211, 238, 0.5), 0 0 60px rgba(34, 211, 238, 0.2)',
-            scale: 1.02,
-          }}
-          whileTap={{ scale: 0.98 }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+          whileHover={{ color: '#22d3ee' }}
         >
-          ENTER COMMAND CENTER
-          <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          <span>SCROLL TO LEARN MORE</span>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ArrowDown size={14} />
+          </motion.div>
         </motion.button>
       </div>
 
-      {/* ===== FEATURES GRID ===== */}
-      <div className="relative z-10 px-6 pt-8 pb-20">
+      {/* ===== ABOUT / "WHAT'S NEW" SECTION ===== */}
+      <div
+        ref={aboutRef}
+        className="relative w-full"
+        style={{ background: '#020617' }}
+      >
+        {/* Section header */}
+        <div className="flex flex-col items-center pt-24 pb-16">
+          <motion.div
+            className="font-mono text-xs tracking-widest mb-6"
+            style={{ color: '#475569' }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            ABOUT THE PROJECT
+          </motion.div>
+          <div
+            className="mx-auto"
+            style={{
+              width: '40px',
+              height: '1px',
+              background: 'rgba(34, 211, 238, 0.3)',
+            }}
+          />
+        </div>
+
+        {/* Timeline entries */}
         <div
-          className="mx-auto grid gap-4"
-          style={{
-            maxWidth: '960px',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          }}
+          className="mx-auto px-6 pb-32"
+          style={{ maxWidth: '720px' }}
         >
-          {features.map((feature, i) => (
-            <FeatureCard key={feature.title} {...feature} index={i} />
+          {timelineEntries.map((entry, i) => (
+            <TimelineEntry
+              key={entry.label}
+              label={entry.label}
+              tag={entry.tag}
+              title={entry.title}
+              description={entry.description}
+              items={entry.items}
+              index={i}
+            />
           ))}
         </div>
-      </div>
 
-      {/* Bottom separator line */}
-      <div
-        className="relative z-10 mx-auto"
-        style={{
-          width: '120px',
-          height: '1px',
-          background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.4), transparent)',
-          marginBottom: '32px',
-        }}
-      />
+        {/* Bottom separator */}
+        <div className="flex justify-center pb-16">
+          <div
+            style={{
+              width: '80px',
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent)',
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
