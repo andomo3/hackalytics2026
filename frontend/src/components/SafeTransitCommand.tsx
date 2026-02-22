@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ScenarioSelector } from './ScenarioSelector';
 import { TimelineSlider } from './TimelineSlider';
 import { TacticalMap } from './TacticalMap';
 import { AlertPanel } from './AlertPanel';
 import { HotspotModal } from './HotspotModal';
+<<<<<<< HEAD
 import type { Hotspot } from './types';
 import { useScenarioData } from '../hooks/useScenarioData';
 
@@ -19,24 +20,113 @@ export function SafeTransitCommand() {
   const currentData = currentScenario?.timeline?.[currentMinute];
   
   // Auto-play functionality
+=======
+import { Hotspot } from './mockData';
+import { useFetchScenario } from '../hooks/useFetchScenario';
+
+function getScenarioStartMinute(scenarioId: string, riskLevel: string): number {
+  const loweredId = scenarioId.toLowerCase();
+  if (loweredId.includes('blowout') || loweredId.includes('_c')) {
+    return 1125;
+  }
+  if (loweredId.includes('high') || loweredId.includes('close') || loweredId.includes('_b')) {
+    return 1200;
+  }
+  if (riskLevel === 'HIGH') {
+    return 1125;
+  }
+  if (riskLevel === 'MEDIUM') {
+    return 1200;
+  }
+  return 1140;
+}
+
+export function SafeTransitCommand() {
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [currentMinute, setCurrentMinute] = useState(1125); // Start at critical moment
+  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
+  const { scenarioOptions, simulationData, isLoading, error, dataSource, refresh } =
+    useFetchScenario(selectedScenarioId);
+
+  const selectedScenarioIndex = useMemo(() => {
+    if (!selectedScenarioId) {
+      return 0;
+    }
+    const index = scenarioOptions.findIndex((scenario) => scenario.id === selectedScenarioId);
+    return index >= 0 ? index : 0;
+  }, [scenarioOptions, selectedScenarioId]);
+
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
   useEffect(() => {
-    if (!isPlaying) return;
-    
-    const interval = setInterval(() => {
-      setCurrentMinute((prev) => {
-        if (prev >= 1439) return 0;
-        return prev + 1;
-      });
-    }, 100); // 100ms per minute = 2.4 minutes for full day
-    
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-  
+    if (scenarioOptions.length === 0) {
+      return;
+    }
+    const selectedExists = selectedScenarioId
+      ? scenarioOptions.some((scenario) => scenario.id === selectedScenarioId)
+      : false;
+    if (!selectedScenarioId || !selectedExists) {
+      const firstScenario = scenarioOptions[0];
+      setSelectedScenarioId(firstScenario.id);
+      setCurrentMinute(getScenarioStartMinute(firstScenario.id, firstScenario.risk_level));
+    }
+  }, [scenarioOptions, selectedScenarioId]);
+
+  useEffect(() => {
+    if (simulationData.timeline.length === 0) {
+      return;
+    }
+    if (currentMinute >= simulationData.timeline.length) {
+      setCurrentMinute(simulationData.timeline.length - 1);
+    }
+  }, [currentMinute, simulationData.timeline.length]);
+
   const handleScenarioChange = (index: number) => {
+<<<<<<< HEAD
     setSelectedScenario(index);
     const keyMin = scenarios[index]?.scenario_metadata?.key_minute;
     setCurrentMinute(keyMin ?? 1260);
+=======
+    const scenario = scenarioOptions[index];
+    if (!scenario) {
+      return;
+    }
+    setSelectedScenarioId(scenario.id);
+    setCurrentMinute(getScenarioStartMinute(scenario.id, scenario.risk_level));
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
   };
+
+  const timeline = simulationData.timeline;
+  const clampedMinute = Math.max(0, Math.min(currentMinute, Math.max(0, timeline.length - 1)));
+  const currentData = timeline[clampedMinute];
+
+  const threatSeries = useMemo(
+    () => timeline.map((minute) => minute.threat_score ?? 0),
+    [timeline]
+  );
+
+  const alertHistory = useMemo(() => {
+    const historyStart = Math.max(0, clampedMinute - 180);
+    return timeline
+      .slice(historyStart, clampedMinute + 1)
+      .filter((frame) => (frame.severity ?? 1) >= 3)
+      .filter((frame) => frame.alert_message && frame.alert_message !== 'ALL SYSTEMS NORMAL')
+      .map((frame) => ({
+        minute: frame.minute,
+        timeLabel: frame.time_label,
+        message: frame.alert_message,
+        severity: frame.severity ?? 1,
+      }))
+      .reverse()
+      .slice(0, 8);
+  }, [clampedMinute, timeline]);
+
+  if (!currentData) {
+    return (
+      <div className="w-full h-full bg-slate-950 relative overflow-hidden flex items-center justify-center">
+        <div className="font-mono text-cyan-400 text-sm">Loading scenario timeline...</div>
+      </div>
+    );
+  }
   
   if (loading) {
     return (
@@ -60,31 +150,16 @@ export function SafeTransitCommand() {
 
   return (
     <div className="w-full h-full bg-slate-950 relative overflow-hidden">
-      {/* CRT Effect - Full screen background */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'radial-gradient(circle at center, rgba(0, 40, 40, 0.2), rgba(0, 0, 0, 0.8))',
-        }}
-      />
-      
-      {/* Vignette Effect */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-[1001]"
-        style={{
-          boxShadow: 'inset 0 0 100px 50px rgba(0, 0, 0, 0.8)',
-        }}
-      />
-      
       {/* Main Content */}
       <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <motion.div
-          className="border-b-2 border-cyan-400 bg-slate-950 bg-opacity-80 backdrop-blur-md px-3 py-2"
-          initial={{ y: -100 }}
-          animate={{ y: 0 }}
-          transition={{ type: 'spring', stiffness: 100 }}
+          className="border-b-2 border-cyan-400 bg-slate-950 px-3 py-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
         >
+<<<<<<< HEAD
           <div className="flex items-center justify-between">
             <div className="font-mono">
               <h1 className="text-sm font-bold text-cyan-400 tracking-wider">
@@ -122,6 +197,14 @@ export function SafeTransitCommand() {
                 </span>
               </div>
             </div>
+=======
+          <h1 className="font-mono text-lg font-bold text-cyan-400 tracking-wider">
+            SAFETRANSIT
+          </h1>
+          <div className="font-mono text-xs text-slate-400 mt-0.5">
+            {isLoading ? 'Loading cache...' : `Data source: ${dataSource.toUpperCase()}`}
+            {error ? ` | ${error}` : ''}
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
           </div>
         </motion.div>
         
@@ -133,8 +216,8 @@ export function SafeTransitCommand() {
           transition={{ delay: 0.2 }}
         >
           <ScenarioSelector
-            scenarios={scenarios.map(s => s.scenario_metadata)}
-            selectedScenario={selectedScenario}
+            scenarios={scenarioOptions}
+            selectedScenario={selectedScenarioIndex}
             onSelectScenario={handleScenarioChange}
           />
         </motion.div>
@@ -150,7 +233,7 @@ export function SafeTransitCommand() {
           >
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${selectedScenario}-${currentMinute}`}
+                key={`${selectedScenarioId ?? selectedScenarioIndex}-${clampedMinute}`}
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.1 }}
@@ -179,9 +262,15 @@ export function SafeTransitCommand() {
               alertMessage={currentData.alert_message}
               threatScore={currentData.threat_score}
               timeLabel={currentData.time_label}
+<<<<<<< HEAD
               corridorHotspots={[...currentData.hotspots]
                 .sort((a, b) => b.density_pct - a.density_pct)
                 .slice(0, 3)}
+=======
+              severity={currentData.severity}
+              crowdVolume={currentData.estimated_crowd_volume}
+              alertHistory={alertHistory}
+>>>>>>> d6c5a15d277f052ed2be7b70979c005a2e6dc0ea
             />
           </motion.div>
         </div>
@@ -194,18 +283,13 @@ export function SafeTransitCommand() {
           transition={{ type: 'spring', stiffness: 100, delay: 0.5 }}
         >
           <TimelineSlider
-            currentMinute={currentMinute}
+            currentMinute={clampedMinute}
             onMinuteChange={setCurrentMinute}
             threatScore={currentData.threat_score}
+            threatSeries={threatSeries}
           />
         </motion.div>
       </div>
-      
-      {/* Corner decorations - retro terminal style */}
-      <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
-      <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-cyan-400 opacity-30 pointer-events-none z-[1000]" />
       
       {/* Hotspot Modal */}
       {selectedHotspot && (
@@ -214,6 +298,15 @@ export function SafeTransitCommand() {
           onClose={() => setSelectedHotspot(null)}
           currentTime={currentData.time_label}
         />
+      )}
+
+      {error && (
+        <button
+          onClick={refresh}
+          className="absolute bottom-3 right-3 z-[1200] text-xs font-mono text-amber-400 border border-amber-400 px-2 py-1 hover:bg-amber-400 hover:text-black transition-colors"
+        >
+          Retry API
+        </button>
       )}
     </div>
   );

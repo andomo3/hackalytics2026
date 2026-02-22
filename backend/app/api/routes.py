@@ -65,6 +65,13 @@ async def get_scenario_timeseries(
     prediction_rows = prediction_result.scalars().all()
     routing_rows = routing_result.scalars().all()
 
+    if not transit_rows and not prediction_rows and not routing_rows:
+        return {
+            "scenario_id": scenario_id,
+            "metadata": scenario,
+            "timeline": generate_synthetic_timeline(scenario_id, scenario),
+        }
+
     transit_by_minute: dict[int, dict[str, dict[str, int]]] = defaultdict(
         lambda: {"transit_load": {}, "pedestrian_volume": {}}
     )
@@ -85,6 +92,7 @@ async def get_scenario_timeseries(
         timeline.append(
             {
                 "minute": minute,
+                "time_label": minute_label(minute),
                 "transit_load": transit_data["transit_load"],
                 "pedestrian_volume": transit_data["pedestrian_volume"],
                 "egress_threat_score": (

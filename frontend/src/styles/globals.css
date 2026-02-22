@@ -187,3 +187,217 @@
 html {
   font-size: var(--font-size);
 }
+
+/* ===== Leaflet Map Overrides ===== */
+
+/* Hide default Leaflet attribution for cleaner look */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Hide default zoom controls */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+/* Ensure map tiles are crisp */
+.leaflet-tile {
+  filter: brightness(0.85) contrast(1.1) saturate(0.7);
+}
+
+/* ===== Route Animations ===== */
+
+/* Marching ants animation for danger routes */
+@keyframes marchingAnts {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.danger-route {
+  animation: marchingAnts 1s linear infinite;
+}
+
+/* Glow effect for safe routes */
+.safe-route {
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6)) drop-shadow(0 0 8px rgba(16, 185, 129, 0.3));
+}
+
+/* ===== Hotspot Pulse Animations ===== */
+
+@keyframes hotspotPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--pulse-color), 0 0 16px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--pulse-color), 0 0 32px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes hotspotRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.hotspot-marker {
+  animation: hotspotPulse 2s ease-in-out infinite;
+}
+
+.hotspot-ring {
+  animation: hotspotRing 1.5s ease-out infinite;
+}
+
+/* ===== Scanning Line ===== */
+
+@keyframes scanLine {
+  0% {
+    top: -100px;
+  }
+  100% {
+    top: calc(100% + 100px);
+  }
+}
+
+.map-scan-line {
+  animation: scanLine 4s linear infinite;
+}
+
+/* ===== Stadium Marker ===== */
+
+@keyframes stadiumGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.6), 0 0 20px rgba(0, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4);
+  }
+}
+
+@keyframes stadiumRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
+}
+
+.stadium-marker {
+  animation: stadiumGlow 2.5s ease-in-out infinite;
+}
+
+.stadium-ring {
+  animation: stadiumRing 3s ease-out infinite;
+}
+
+/* ===== Intersection Heat Markers ===== */
+
+@keyframes heatPulse {
+  0%, 100% {
+    box-shadow: 0 0 6px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 14px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes heatPulseCritical {
+  0%, 100% {
+    box-shadow: 0 0 12px var(--pulse-color), 0 0 24px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 24px var(--pulse-color), 0 0 40px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+@keyframes heatPulseHigh {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--pulse-color), 0 0 16px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--pulse-color), 0 0 28px var(--pulse-color);
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+.heat-marker {
+  animation: heatPulse 3s ease-in-out infinite;
+  transition: opacity 0.3s ease;
+}
+
+.heat-marker-critical {
+  animation: heatPulseCritical 1.2s ease-in-out infinite;
+  transition: opacity 0.3s ease;
+}
+
+.heat-marker-high {
+  animation: heatPulseHigh 2s ease-in-out infinite;
+  transition: opacity 0.3s ease;
+}
+
+/* ===== Retro Popup Styles ===== */
+
+.retro-popup .leaflet-popup-content-wrapper {
+  background: rgba(2, 6, 23, 0.95) !important;
+  border: 1px solid rgba(34, 211, 238, 0.5) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px);
+  padding: 0 !important;
+}
+
+.retro-popup .leaflet-popup-content {
+  margin: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  color: #e2e8f0 !important;
+}
+
+.retro-popup .leaflet-popup-tip {
+  background: rgba(2, 6, 23, 0.95) !important;
+  border: 1px solid rgba(34, 211, 238, 0.3) !important;
+  box-shadow: none !important;
+}
+
+.retro-popup .leaflet-popup-close-button {
+  color: #22d3ee !important;
+  font-size: 18px !important;
+  padding: 6px 8px !important;
+  top: 2px !important;
+  right: 4px !important;
+}
+
+.retro-popup .leaflet-popup-close-button:hover {
+  color: #ef4444 !important;
+}
+
+.intersection-popup {
+  padding: 12px;
+  min-width: 200px;
+}
+
+/* Blurb tooltip override */
+.blurb-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.blurb-tooltip .leaflet-tooltip-content {
+  margin: 0 !important;
+}
