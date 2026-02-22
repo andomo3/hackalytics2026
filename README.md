@@ -43,3 +43,17 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Verify Container Consistency
+
+Generate a local environment fingerprint:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1
+```
+
+Compare against a teammate fingerprint:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -CompareWith .\artifacts\env-fingerprint-TEAMMATE.json
+```
