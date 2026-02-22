@@ -17,6 +17,18 @@ export interface Hotspot {
   recommended_action?: string;
 }
 
+export interface Intersection {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  heat: number;            // 0-100: simulated busyness percentage
+  flow_direction: string;  // e.g. "N", "SE", "W"
+  threat_level: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  crowd_estimate: number;  // estimated pedestrians at this intersection
+  ai_recommendation: string;
+}
+
 export interface TimelineMinute {
   minute: number;
   time_label: string;
@@ -27,6 +39,11 @@ export interface TimelineMinute {
   safe_routes: number[][][];
   blurbs: Array<{ lat: number; lng: number; text: string }>;
   hotspots: Hotspot[];
+  intersections: Intersection[];
+  severity?: number;
+  estimated_crowd_volume?: number;
+  transit_load?: Record<string, number>;
+  pedestrian_volume?: Record<string, number>;
 }
 
 export interface ScenarioMetadata {
@@ -35,11 +52,163 @@ export interface ScenarioMetadata {
   attendance: number;
   description: string;
   risk_level: string;
+  date?: string;
+  teams?: string;
+  profile_type?: string;
 }
 
 export interface ScenarioData {
   scenario_metadata: ScenarioMetadata;
   timeline: TimelineMinute[];
+}
+
+// ====== Intersection Grid ======
+// Real Seattle intersections within ~1 mile of Lumen Field (47.5952, -122.3316)
+// Each has a distance tier: 'near' (< 0.3mi), 'mid' (0.3-0.6mi), 'far' (0.6-1mi)
+// and a primary flow direction based on its position relative to the stadium.
+const INTERSECTION_DEFS: Array<{
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  tier: 'near' | 'mid' | 'far';
+  flowDir: string;
+}> = [
+  // NEAR tier -- immediately around Lumen Field
+  { id: 'int_01', name: 'S Royal Brougham & Occidental', lat: 47.5934, lng: -122.3327, tier: 'near', flowDir: 'S' },
+  { id: 'int_02', name: '1st Ave S & S King St', lat: 47.5981, lng: -122.3340, tier: 'near', flowDir: 'N' },
+  { id: 'int_03', name: 'Occidental Ave S & S Atlantic St', lat: 47.5918, lng: -122.3328, tier: 'near', flowDir: 'S' },
+  { id: 'int_04', name: '1st Ave S & S Royal Brougham', lat: 47.5936, lng: -122.3346, tier: 'near', flowDir: 'W' },
+  { id: 'int_05', name: 'Edgar Martinez Dr & Occidental', lat: 47.5910, lng: -122.3323, tier: 'near', flowDir: 'SE' },
+  { id: 'int_06', name: '4th Ave S & S Royal Brougham', lat: 47.5940, lng: -122.3290, tier: 'near', flowDir: 'E' },
+  { id: 'int_07', name: 'S King St & 2nd Ave S', lat: 47.5985, lng: -122.3310, tier: 'near', flowDir: 'N' },
+  { id: 'int_08', name: 'Airport Way S & S Royal Brougham', lat: 47.5937, lng: -122.3265, tier: 'near', flowDir: 'E' },
+  { id: 'int_09', name: 'Occidental Ave S & S Dearborn', lat: 47.5960, lng: -122.3330, tier: 'near', flowDir: 'NW' },
+  { id: 'int_10', name: '3rd Ave S & S King St', lat: 47.5983, lng: -122.3295, tier: 'near', flowDir: 'NE' },
+
+  // MID tier -- within 0.3-0.6 miles
+  { id: 'int_11', name: '1st Ave S & S Jackson St', lat: 47.5993, lng: -122.3345, tier: 'mid', flowDir: 'N' },
+  { id: 'int_12', name: '4th Ave S & S Jackson St', lat: 47.5995, lng: -122.3280, tier: 'mid', flowDir: 'NE' },
+  { id: 'int_13', name: 'S Lander St & 1st Ave S', lat: 47.5880, lng: -122.3340, tier: 'mid', flowDir: 'SW' },
+  { id: 'int_14', name: 'Alaskan Way S & S King St', lat: 47.5982, lng: -122.3380, tier: 'mid', flowDir: 'NW' },
+  { id: 'int_15', name: '6th Ave S & S Royal Brougham', lat: 47.5942, lng: -122.3250, tier: 'mid', flowDir: 'E' },
+  { id: 'int_16', name: 'S Holgate St & 1st Ave S', lat: 47.5898, lng: -122.3340, tier: 'mid', flowDir: 'S' },
+  { id: 'int_17', name: '2nd Ave S & S Jackson St', lat: 47.5993, lng: -122.3320, tier: 'mid', flowDir: 'N' },
+  { id: 'int_18', name: 'Utah Ave S & S Royal Brougham', lat: 47.5939, lng: -122.3230, tier: 'mid', flowDir: 'E' },
+  { id: 'int_19', name: 'Occidental Ave S & S Holgate', lat: 47.5895, lng: -122.3325, tier: 'mid', flowDir: 'S' },
+  { id: 'int_20', name: '4th Ave S & S Dearborn St', lat: 47.5965, lng: -122.3288, tier: 'mid', flowDir: 'NE' },
+  { id: 'int_21', name: 'Alaskan Way S & S Atlantic', lat: 47.5920, lng: -122.3380, tier: 'mid', flowDir: 'W' },
+  { id: 'int_22', name: 'Rainier Ave S & S Dearborn', lat: 47.5961, lng: -122.3220, tier: 'mid', flowDir: 'E' },
+  { id: 'int_23', name: 'Maynard Ave S & S King St', lat: 47.5987, lng: -122.3260, tier: 'mid', flowDir: 'NE' },
+  { id: 'int_24', name: '1st Ave S & S Stacy St', lat: 47.5903, lng: -122.3342, tier: 'mid', flowDir: 'S' },
+  { id: 'int_25', name: '3rd Ave S & S Holgate St', lat: 47.5897, lng: -122.3300, tier: 'mid', flowDir: 'SE' },
+
+  // FAR tier -- 0.6-1 mile radius
+  { id: 'int_26', name: 'James St & 2nd Ave', lat: 47.6025, lng: -122.3330, tier: 'far', flowDir: 'N' },
+  { id: 'int_27', name: 'Yesler Way & 1st Ave', lat: 47.6015, lng: -122.3350, tier: 'far', flowDir: 'N' },
+  { id: 'int_28', name: 'S Lander St & Airport Way S', lat: 47.5878, lng: -122.3260, tier: 'far', flowDir: 'SE' },
+  { id: 'int_29', name: '4th Ave & Cherry St', lat: 47.6043, lng: -122.3295, tier: 'far', flowDir: 'N' },
+  { id: 'int_30', name: 'Alaskan Way & Madison St', lat: 47.6040, lng: -122.3385, tier: 'far', flowDir: 'NW' },
+  { id: 'int_31', name: 'Rainier Ave S & S Holgate', lat: 47.5893, lng: -122.3210, tier: 'far', flowDir: 'SE' },
+  { id: 'int_32', name: '12th Ave S & S Jackson St', lat: 47.5988, lng: -122.3170, tier: 'far', flowDir: 'E' },
+  { id: 'int_33', name: 'S Walker St & Rainier Ave S', lat: 47.5863, lng: -122.3215, tier: 'far', flowDir: 'SE' },
+  { id: 'int_34', name: '2nd Ave & Columbia St', lat: 47.6030, lng: -122.3340, tier: 'far', flowDir: 'N' },
+  { id: 'int_35', name: 'S Forest St & Airport Way S', lat: 47.5855, lng: -122.3255, tier: 'far', flowDir: 'S' },
+  { id: 'int_36', name: '5th Ave S & S Jackson St', lat: 47.5995, lng: -122.3260, tier: 'far', flowDir: 'NE' },
+  { id: 'int_37', name: 'Alaskan Way S & S Holgate', lat: 47.5893, lng: -122.3385, tier: 'far', flowDir: 'SW' },
+  { id: 'int_38', name: 'Yesler Way & 3rd Ave', lat: 47.6013, lng: -122.3315, tier: 'far', flowDir: 'N' },
+  { id: 'int_39', name: 'S Michigan St & Rainier Ave', lat: 47.5845, lng: -122.3210, tier: 'far', flowDir: 'SE' },
+  { id: 'int_40', name: '1st Ave & Cherry St', lat: 47.6045, lng: -122.3370, tier: 'far', flowDir: 'NW' },
+];
+
+// Seeded PRNG for deterministic per-intersection variation
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
+/** Generate intersection heat values for a given minute and scenario */
+function generateIntersections(
+  minute: number,
+  scenarioType: 'normal' | 'high_attendance' | 'blowout'
+): Intersection[] {
+  const isPreGame = minute >= 1020 && minute < 1080;
+  const isGameTime = minute >= 1080 && minute < 1260;
+  const isPostGame = minute >= 1260 && minute < 1380;
+  const isActive = isPreGame || isGameTime || isPostGame;
+
+  // Base multiplier by scenario
+  const scenarioMult = scenarioType === 'blowout' ? 1.3 : scenarioType === 'high_attendance' ? 1.15 : 1.0;
+
+  // Time-based intensity curve
+  let timeIntensity = 0;
+  if (isPreGame) {
+    timeIntensity = 0.3 + ((minute - 1020) / 60) * 0.4; // ramps 0.3 -> 0.7
+  } else if (isGameTime) {
+    const gameMin = minute - 1080;
+    timeIntensity = 0.5 + (gameMin / 180) * 0.3; // 0.5 -> 0.8
+    // Blowout Q3 spike
+    if (scenarioType === 'blowout' && gameMin >= 90 && gameMin <= 150) {
+      timeIntensity = 0.95;
+    }
+  } else if (isPostGame) {
+    const postMin = minute - 1260;
+    timeIntensity = 0.9 - (postMin / 120) * 0.6; // 0.9 -> 0.3
+    // Blowout post-game is more intense early
+    if (scenarioType === 'blowout' && postMin < 30) {
+      timeIntensity = 1.0;
+    }
+  } else {
+    // Off-hours: baseline urban traffic
+    const hour = Math.floor(minute / 60);
+    if (hour >= 7 && hour <= 9) timeIntensity = 0.15; // morning commute
+    else if (hour >= 16 && hour <= 18) timeIntensity = 0.2; // evening commute
+    else timeIntensity = 0.05;
+  }
+
+  // Tier multipliers: near intersections get more traffic
+  const tierMult: Record<string, number> = { near: 1.0, mid: 0.65, far: 0.35 };
+
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+  return INTERSECTION_DEFS.map((def, idx) => {
+    const variation = seededRandom(minute * 100 + idx) * 0.25; // 0-25% noise
+    const rawHeat = timeIntensity * scenarioMult * tierMult[def.tier] * (0.75 + variation);
+    const heat = Math.round(Math.min(100, Math.max(0, rawHeat * 100)));
+    const crowdEstimate = Math.round(heat * (isActive ? 12 : 3) * (def.tier === 'near' ? 1.5 : def.tier === 'mid' ? 1.0 : 0.6));
+
+    let threat_level: Intersection['threat_level'] = 'LOW';
+    if (heat >= 85) threat_level = 'CRITICAL';
+    else if (heat >= 65) threat_level = 'HIGH';
+    else if (heat >= 40) threat_level = 'MODERATE';
+
+    // AI recommendation based on state
+    let ai_recommendation = 'Normal flow. No action needed.';
+    if (threat_level === 'CRITICAL') {
+      ai_recommendation = 'Reroute pedestrians. Deploy crowd control.';
+    } else if (threat_level === 'HIGH') {
+      ai_recommendation = 'Monitor closely. Prepare alternate routes.';
+    } else if (threat_level === 'MODERATE') {
+      ai_recommendation = 'Elevated activity. Continue monitoring.';
+    }
+
+    // Slightly randomize flow direction during active periods
+    const flowDir = isActive
+      ? (seededRandom(minute * 50 + idx * 7) > 0.7 ? directions[Math.floor(seededRandom(minute * 33 + idx) * 8)] : def.flowDir)
+      : def.flowDir;
+
+    return {
+      id: def.id,
+      name: def.name,
+      lat: def.lat,
+      lng: def.lng,
+      heat,
+      flow_direction: flowDir,
+      threat_level,
+      crowd_estimate: crowdEstimate,
+      ai_recommendation,
+    };
+  });
 }
 
 // Generate timeline data for a full 24 hours (1440 minutes)
@@ -248,6 +417,7 @@ function generateTimeline(scenarioType: 'normal' | 'high_attendance' | 'blowout'
     }
     
     const hotspots = generateHotspots(i, scenarioType, isGameTime, isPostGame);
+    const intersections = generateIntersections(i, scenarioType);
     
     timeline.push({
       minute: i,
@@ -258,7 +428,8 @@ function generateTimeline(scenarioType: 'normal' | 'high_attendance' | 'blowout'
       danger_routes,
       safe_routes,
       blurbs,
-      hotspots
+      hotspots,
+      intersections,
     });
   }
   
@@ -297,3 +468,31 @@ export const scenarios: ScenarioData[] = [
     timeline: generateTimeline('blowout')
   }
 ];
+
+export const mockScenarioMetadata: ScenarioMetadata[] = scenarios.map(
+  (scenario) => scenario.scenario_metadata
+);
+
+export function findMockScenarioById(scenarioId: string): ScenarioData {
+  const exactMatch = scenarios.find(
+    (scenario) => scenario.scenario_metadata.id === scenarioId
+  );
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const lowered = scenarioId.toLowerCase();
+  if (lowered.includes('blowout') || lowered.includes('scenario_c') || lowered.includes('_c')) {
+    return scenarios[2];
+  }
+  if (
+    lowered.includes('high') ||
+    lowered.includes('close') ||
+    lowered.includes('quarter') ||
+    lowered.includes('scenario_b') ||
+    lowered.includes('_b')
+  ) {
+    return scenarios[1];
+  }
+  return scenarios[0];
+}
