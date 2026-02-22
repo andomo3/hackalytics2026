@@ -6,7 +6,7 @@ interface LandingPageProps {
   onEnter: () => void;
 }
 
-/* ───── animated dot-grid background ───── */
+/* ───── static dot-grid background ───── */
 function DotGrid() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -16,62 +16,29 @@ function DotGrid() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let raf: number;
-    const dots: { x: number; y: number; baseAlpha: number }[] = [];
     const SPACING = 32;
 
-    function resize() {
-      if (!canvas) return;
+    function draw() {
+      if (!canvas || !ctx) return;
       canvas.width = canvas.offsetWidth * devicePixelRatio;
       canvas.height = canvas.offsetHeight * devicePixelRatio;
-      dots.length = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const r = 1.2 * devicePixelRatio;
       for (let x = 0; x < canvas.width; x += SPACING * devicePixelRatio) {
         for (let y = 0; y < canvas.height; y += SPACING * devicePixelRatio) {
-          dots.push({ x, y, baseAlpha: 0.12 + Math.random() * 0.08 });
+          const alpha = 0.12 + Math.random() * 0.06;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(34, 211, 238, ${alpha})`;
+          ctx.fill();
         }
       }
     }
 
-    let mouseX = -1000;
-    let mouseY = -1000;
-
-    function onMove(e: MouseEvent) {
-      mouseX = e.clientX * devicePixelRatio;
-      mouseY = e.clientY * devicePixelRatio;
-    }
-
-    function draw(time: number) {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (const dot of dots) {
-        const dx = dot.x - mouseX;
-        const dy = dot.y - mouseY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const proximity = Math.max(0, 1 - dist / (180 * devicePixelRatio));
-        const pulse = Math.sin(time * 0.001 + dot.x * 0.005 + dot.y * 0.005) * 0.04;
-        const alpha = Math.min(1, dot.baseAlpha + proximity * 0.6 + pulse);
-        const radius = (1.2 + proximity * 2) * devicePixelRatio;
-
-        ctx.beginPath();
-        ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(34, 211, 238, ${alpha})`;
-        ctx.fill();
-      }
-
-      raf = requestAnimationFrame(draw);
-    }
-
-    resize();
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', onMove);
-    raf = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', onMove);
-    };
+    draw();
+    window.addEventListener('resize', draw);
+    return () => window.removeEventListener('resize', draw);
   }, []);
 
   return (
@@ -130,6 +97,7 @@ function BentoCell({
       style={{
         background: 'rgba(2, 6, 23, 0.7)',
         border: '1px solid rgba(34, 211, 238, 0.08)',
+        borderRadius: '8px',
         transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
         ...style,
       }}
@@ -295,11 +263,10 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(12, 1fr)',
-            gap: '1px',
+            gap: '8px',
             maxWidth: '1200px',
             margin: '0 auto',
             padding: '0 24px 96px',
-            background: 'rgba(34, 211, 238, 0.03)',
           }}
         >
           {/* ---- Metrics row (4 cells spanning 3 cols each) ---- */}
